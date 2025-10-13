@@ -1,0 +1,47 @@
+﻿{{- if .Values.jdbc.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  application.properties: |
+    # JDBC Pool Configuration
+    jdbc.{{ .Values.jdbc.pool.name }}.dbURL={{ .Values.jdbc.pool.dbURL }}
+    jdbc.{{ .Values.jdbc.pool.name }}.description=
+    jdbc.{{ .Values.jdbc.pool.name }}.driverAlias={{ .Values.jdbc.pool.driverAlias }}
+    jdbc.{{ .Values.jdbc.pool.name }}.expireTime={{ .Values.jdbc.pool.expireTime }}
+    jdbc.{{ .Values.jdbc.pool.name }}.keystoreAlias=
+    jdbc.{{ .Values.jdbc.pool.name }}.maxConns={{ .Values.jdbc.pool.maxConns }}
+    jdbc.{{ .Values.jdbc.pool.name }}.minConns={{ .Values.jdbc.pool.minConns }}
+    jdbc.{{ .Values.jdbc.pool.name }}.password={{ .Values.jdbc.pool.password }}
+    jdbc.{{ .Values.jdbc.pool.name }}.poolThreshold={{ .Values.jdbc.pool.poolThreshold }}
+    jdbc.{{ .Values.jdbc.pool.name }}.snoopenabled=false
+    jdbc.{{ .Values.jdbc.pool.name }}.snoopparms=ddtdbg.ProtocolTraceEnable=true;ddtdbg.ProtocolTraceMaxline=16;ddtdbg.ProtocolTraceLocation=logs/snoop/{{ .Values.jdbc.pool.name }}.log;ddtdbg.ProtocolTraceShowTime=true
+    jdbc.{{ .Values.jdbc.pool.name }}.spyenabled=false
+    jdbc.{{ .Values.jdbc.pool.name }}.spyparms=SpyAttributes=(log=(file)logs/spy/{{ .Values.jdbc.pool.name }}.log;logTName=yes;timestamp=yes)
+    jdbc.{{ .Values.jdbc.pool.name }}.tlsVersion=
+    jdbc.{{ .Values.jdbc.pool.name }}.truststoreAlias=
+    jdbc.{{ .Values.jdbc.pool.name }}.useSSL={{ .Values.jdbc.pool.useSSL }}
+    jdbc.{{ .Values.jdbc.pool.name }}.userid={{ .Values.jdbc.pool.username }}
+    jdbc.{{ .Values.jdbc.pool.name }}.waitingThread={{ .Values.jdbc.pool.waitingThread }}
+    
+    # JDBC Functional Aliases
+    {{- range .Values.jdbc.functionalAliases }}
+    jdbcfunc.{{ .name }}.connPoolAlias={{ .connPoolAlias }}
+    jdbcfunc.{{ .name }}.failFastMode={{ .failFastMode }}
+    {{- end }}
+
+    {{- if .Values.um.enabled }}
+    # Universal Messaging Connection Alias
+    messaging.{{ .Values.um.connectionAlias }}.enabled={{ .Values.um.connectionEnabled }}
+    messaging.{{ .Values.um.connectionAlias }}.url={{ .Values.um.url }}
+    messaging.{{ .Values.um.connectionAlias }}.user={{ .Values.um.user }}
+    messaging.{{ .Values.um.connectionAlias }}.password={{ .Values.um.password }}
+    messaging.{{ .Values.um.connectionAlias }}.useCSQ={{ .Values.um.useCSQ }}
+    messaging.{{ .Values.um.connectionAlias }}.csqSize={{ .Values.um.csqSize }}
+    messaging.{{ .Values.um.connectionAlias }}.csqDrainInOrder={{ .Values.um.csqDrainInOrder }}
+    {{- end }}
+{{- end }}

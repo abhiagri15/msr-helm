@@ -1,0 +1,129 @@
+﻿# Development Environment Configuration
+# 2-node cluster with reduced resources
+
+global:
+  namespace: webmethods
+
+replicaCount: 2
+
+image:
+  repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
+  tag: "11.1.0.6-postgresql-v2"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    http: 5555
+    https: 5543
+    diagnostic: 9999
+
+# Resources for dev
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: "1000m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m"
+
+# JVM memory for dev
+jvm:
+  minMemory: "800m"
+  maxMemory: "900m"
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: "default"
+  accessMode: ReadWriteOnce
+  size: 3Gi
+
+# JDBC Configuration
+jdbc:
+  enabled: true
+  pool:
+    name: "IS-Pool"
+    dbURL: "jdbc:postgresql://wm-postgresql.webmethods.svc.cluster.local:5432/isinternal"
+    driverAlias: "PostgresqlDriver"
+    username: "isadmin"
+    password: "isdbpassword"
+    minConns: 1
+    maxConns: 100
+    poolThreshold: 5
+    waitingThread: 50
+    expireTime: 60000
+    useSSL: false
+  functionalAliases:
+    - name: "ISInternal"
+      connPoolAlias: "IS-Pool"
+      failFastMode: true
+    - name: "ISDashboardStats"
+      connPoolAlias: "IS-Pool"
+      failFastMode: false
+    - name: "Xref"
+      connPoolAlias: "IS-Pool"
+      failFastMode: true
+
+# High availability with pod anti-affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app: wm-msr
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Health Probes (faster for dev)
+healthProbes:
+  startup:
+    enabled: true
+    path: /
+    port: 5555
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+  liveness:
+    enabled: true
+    path: /
+    port: 5555
+    initialDelaySeconds: 120
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    path: /
+    port: 5555
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Universal Messaging Configuration
+um:
+  enabled: true
+  connectionEnabled: true
+  connectionAlias: "IS_UM_CONNECTION"
+  url: "nsp://wm-um.webmethods.svc.cluster.local:9000"
+  user: "Administrator"
+  password: "manage"
+  useCSQ: "true"
+  csqSize: "-1"
+  csqDrainInOrder: "true"
+
+# Autoscaling Configuration
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: webmethods-msr
+description: webMethods MicroServices Runtime with PostgreSQL JDBC - Multi-node Cluster
+type: application
+version: 1.1.0
+appVersion: "11.1.0.6"
+keywords:
+  - webmethods
+  - integration-server
+  - msr
+  - microservices-runtime
+  - cluster
+home: https://github.com/ibm-webmethods-demos
+maintainers:
+  - name: webMethods Team
+    email: support@softwareag.com

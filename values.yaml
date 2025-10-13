@@ -1,0 +1,136 @@
+# webMethods MSR Helm Chart Values
+# Multi-node Cluster Configuration
+
+## Global Settings
+global:
+  namespace: webmethods
+
+## Cluster Configuration
+replicaCount: 2  # Start with 2 nodes, can be scaled up
+
+## Image Configuration
+image:
+  repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
+  tag: "11.1.0.6-postgresql-v2"
+  pullPolicy: IfNotPresent
+
+## Service Configuration
+service:
+  type: ClusterIP
+  ports:
+    http: 5555
+    https: 5543
+    diagnostic: 9999
+
+## Resource Configuration
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: "500m"
+  limits:
+    memory: "2Gi"
+    cpu: "1000m"
+
+## JVM Configuration
+jvm:
+  minMemory: "512m"
+  maxMemory: "1024m"
+
+## Persistent Storage (per pod)
+persistence:
+  enabled: true
+  storageClass: "default"
+  size: 5Gi
+  accessMode: ReadWriteOnce
+
+## JDBC Configuration
+jdbc:
+  enabled: true
+  pool:
+    name: "IS-Pool"
+    dbURL: "jdbc:postgresql://wm-postgresql.webmethods.svc.cluster.local:5432/isinternal"
+    driverAlias: "PostgresqlDriver"
+    username: "isadmin"
+    password: "isdbpassword"
+    minConns: 1
+    maxConns: 25
+    poolThreshold: 10
+    waitingThread: 100
+    expireTime: 60000
+    useSSL: false
+  functionalAliases:
+    - name: "ISInternal"
+      connPoolAlias: "IS-Pool"
+      failFastMode: true
+    - name: "ISDashboardStats"
+      connPoolAlias: "IS-Pool"
+      failFastMode: false
+    - name: "Xref"
+      connPoolAlias: "IS-Pool"
+      failFastMode: true
+
+## Health Probes
+healthProbes:
+  startup:
+    enabled: true
+    path: /health
+    port: 5555
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+  liveness:
+    enabled: true
+    path: /health
+    port: 5555
+    initialDelaySeconds: 120
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    path: /health
+    port: 5555
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+## Pod Disruption Budget (for high availability)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+## Pod Anti-Affinity (spread pods across nodes)
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - wm-msr
+          topologyKey: kubernetes.io/hostname
+
+## Universal Messaging Configuration
+um:
+  enabled: false  # Set to false by default, override in environment-specific values
+  connectionEnabled: true  # When UM is enabled, connection is enabled by default
+  connectionAlias: "IS_UM_CONNECTION"
+  url: "nsp://wm-um.webmethods.svc.cluster.local:9000"
+  user: "Administrator"
+  password: "manage"
+  useCSQ: "true"
+  csqSize: "-1"
+  csqDrainInOrder: "true"
+
+## Autoscaling Configuration
+autoscaling:
+  enabled: false  # Set to false by default, override in environment-specific values
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80

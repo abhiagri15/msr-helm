@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "webmethods-msr.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "webmethods-msr.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "webmethods-msr.selectorLabels" . | nindent 8 }}
+        component: microservicesruntime
+    spec:
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: msr
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.ports.http }}
+          name: http
+          protocol: TCP
+        - containerPort: {{ .Values.service.ports.https }}
+          name: https
+          protocol: TCP
+        - containerPort: {{ .Values.service.ports.diagnostic }}
+          name: diagnostic
+          protocol: TCP
+        env:
+        - name: JAVA_MIN_MEM
+          value: {{ .Values.jvm.minMemory | quote }}
+        - name: JAVA_MAX_MEM
+          value: {{ .Values.jvm.maxMemory | quote }}
+        - name: SAG_IS_CONFIG_PROPERTIES
+          value: "/opt/softwareag/IntegrationServer/application.properties"
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- if .Values.healthProbes.startup.enabled }}
+        startupProbe:
+          httpGet:
+            path: {{ .Values.healthProbes.startup.path }}
+            port: {{ .Values.healthProbes.startup.port }}
+          initialDelaySeconds: {{ .Values.healthProbes.startup.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthProbes.startup.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthProbes.startup.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthProbes.startup.failureThreshold }}
+        {{- end }}
+        {{- if .Values.healthProbes.liveness.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.healthProbes.liveness.path }}
+            port: {{ .Values.healthProbes.liveness.port }}
+          initialDelaySeconds: {{ .Values.healthProbes.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthProbes.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthProbes.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthProbes.liveness.failureThreshold }}
+        {{- end }}
+        {{- if .Values.healthProbes.readiness.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.healthProbes.readiness.path }}
+            port: {{ .Values.healthProbes.readiness.port }}
+          initialDelaySeconds: {{ .Values.healthProbes.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthProbes.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthProbes.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthProbes.readiness.failureThreshold }}
+        {{- end }}
+        volumeMounts:
+        - name: msr-data
+          mountPath: /opt/softwareag/IntegrationServer/instances/default/packages
+          subPath: packages
+        - name: msr-data
+          mountPath: /opt/softwareag/IntegrationServer/instances/default/config
+          subPath: config
+        - name: msr-data
+          mountPath: /opt/softwareag/IntegrationServer/instances/default/logs
+          subPath: logs
+        {{- if .Values.jdbc.enabled }}
+        - name: application-properties
+          mountPath: /opt/softwareag/IntegrationServer/application.properties
+          subPath: application.properties
+        {{- end }}
+      volumes:
+      {{- if .Values.jdbc.enabled }}
+      - name: application-properties
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-config
+      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: msr-data
+    spec:
+      accessModes: [ {{ .Values.persistence.accessMode | quote }} ]
+      storageClassName: {{ .Values.persistence.storageClass | quote }}
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size }}
+  {{- end }}

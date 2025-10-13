@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+  - port: {{ .Values.service.ports.http }}
+    targetPort: {{ .Values.service.ports.http }}
+    protocol: TCP
+    name: http
+  - port: {{ .Values.service.ports.https }}
+    targetPort: {{ .Values.service.ports.https }}
+    protocol: TCP
+    name: https
+  - port: {{ .Values.service.ports.diagnostic }}
+    targetPort: {{ .Values.service.ports.diagnostic }}
+    protocol: TCP
+    name: diagnostic
+  selector:
+    {{- include "webmethods-msr.selectorLabels" . | nindent 4 }}
