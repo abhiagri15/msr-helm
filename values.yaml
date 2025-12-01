@@ -43,15 +43,20 @@ persistence:
   size: 5Gi
   accessMode: ReadWriteOnce
 
-## JDBC Configuration
+## JDBC Configuration (legacy - for backwards compatibility)
+## NOTE: Use jdbcPool for MSR internal pools and jdbcAdapter for WmJDBCAdapter connections
 jdbc:
-  enabled: true
+  enabled: false  # Deprecated - use jdbcPool instead
+
+## JDBC Pool Configuration (MSR Internal - ISInternal, Xref, ISDashboardStats)
+## This creates the JDBC connection pool used by MSR for internal operations
+## Credentials are injected via environment variables from the jdbc-secrets secret
+jdbcPool:
+  enabled: false  # Set to true to enable JDBC Pool
   pool:
     name: "IS-Pool"
-    dbURL: "jdbc:postgresql://wm-postgresql.webmethods.svc.cluster.local:5432/isinternal"
     driverAlias: "PostgresqlDriver"
-    username: "isadmin"
-    password: "isdbpassword"
+    dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
     minConns: 1
     maxConns: 25
     poolThreshold: 10
@@ -68,6 +73,35 @@ jdbc:
     - name: "Xref"
       connPoolAlias: "IS-Pool"
       failFastMode: true
+
+## JDBC Adapter Configuration (WmJDBCAdapter connections)
+## This creates adapter connections for the WmJDBCAdapter package
+jdbcAdapter:
+  enabled: false  # Set to true to enable JDBC Adapter connections
+  connections: []
+    # Example connection configuration:
+    # - name: "AbTest3Connection"
+    #   description: "JDBC Adapter Connection for AbTest3"
+    #   packageName: "AbTest3"
+    #   folderName: "connection"
+    #   connectionType: "jdbc"
+    #   connectionFactoryInterface: "javax.sql.DataSource"
+    #   transactionType: "LOCAL_TRANSACTION"
+    #   serverName: "${JDBC_ADAPTER_SERVER}"
+    #   databaseName: "${JDBC_ADAPTER_DATABASE}"
+    #   portNumber: "${JDBC_ADAPTER_PORT}"
+    #   networkProtocol: ""
+    #   user: "${JDBC_ADAPTER_USERNAME}"
+    #   password: "${JDBC_ADAPTER_PASSWORD}"
+    #   dataSourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
+    #   otherProperties: "encrypt=true"
+    #   minPoolSize: 1
+    #   maxPoolSize: 10
+    #   poolIncrementSize: 1
+    #   blockTimeout: 30000
+    #   expireTimeout: 60000
+    #   startupRetryCount: 3
+    #   startupBackoffSecs: 10
 
 ## Health Probes
 healthProbes:
@@ -127,6 +161,37 @@ um:
   csqSize: "-1"
   csqDrainInOrder: "true"
 
+## Terracotta Cache Manager Configuration
+terracotta:
+  enabled: false  # Set to false by default, override in environment-specific values
+  cacheManagerName: "IS_TERRACOTTA_CACHE"
+  urls: []  # Array of Terracotta server URLs, e.g., ["terracotta-0.terracotta.svc:9510"]
+  waitForReady: true  # Add init container to wait for Terracotta servers to be ready before starting MSR
+
+## Keystore Configuration
+## Multiple keystores can be configured, each with a unique alias name
+keystores: []
+  # - aliasName: "DEFAULT_IS_KEYSTORE"
+  #   description: "Default Integration Server Keystore"
+  #   type: "JKS"  # JKS, PKCS12
+  #   provider: "SUN"  # SUN, BC, SunJSSE
+  #   location: "/opt/softwareag/IntegrationServer/config/security/keystore.jks"
+  #   password: "manage"
+  #   isHsm: false
+  #   keys: []
+  #     # - keyAliasName: "sslkey"
+  #     #   keyAliasPassword: "manage"
+
+## Truststore Configuration
+## Multiple truststores can be configured, each with a unique alias name
+truststores: []
+  # - aliasName: "DEFAULT_IS_TRUSTSTORE"
+  #   description: "Default Integration Server Truststore"
+  #   type: "JKS"  # JKS, PKCS12
+  #   provider: "SUN"  # SUN, BC, SunJSSE
+  #   location: "/opt/softwareag/IntegrationServer/config/security/truststore.jks"
+  #   password: "manage"
+
 ## Autoscaling Configuration
 autoscaling:
   enabled: false  # Set to false by default, override in environment-specific values
@@ -134,3 +199,73 @@ autoscaling:
   maxReplicas: 5
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
+
+## Azure Key Vault Integration (using CSI driver)
+## Retrieves certificates from Azure Key Vault and converts them to Java keystores/truststores
+##
+## How it works:
+## 1. CSI Secrets Store Provider mounts certificates to /mnt/secrets-store/
+## 2. Init container uses Azure CLI to download certificates with private keys
+## 3. OpenSSL converts Azure's proprietary PFX format to PEM format
+## 4. OpenSSL creates Java-compatible PKCS12 keystores
+## 5. Java keytool creates truststores from public certificates
+## 6. MSR loads keystores/truststores on startup
+##
+## Prerequisites:
+## - Azure Key Vault created with certificates uploaded
+## - AKS cluster with Azure Key Vault CSI driver enabled
+## - Kubelet managed identity with Key Vault access (get, list permissions on secrets and certificates)
+##
+## For detailed setup instructions, see: AZURE_KEYVAULT_SETUP.md
+azureKeyVault:
+  enabled: false  # Set to true to enable Azure Key Vault integration
+  vaultName: ""  # Name of the Azure Key Vault (e.g., "wM-kv")
+  tenantId: ""  # Azure tenant ID (get from: az account show --query tenantId -o tsv)
+  clientId: ""  # Client ID of the kubelet managed identity (get from: az aks show --query identityProfile.kubeletidentity.clientId -o tsv)
+
+  # Keystore Certificates (certificates with private keys)
+  # These are downloaded using Azure CLI and converted to Java PKCS12 keystores by init container
+  certificates: []
+    # Example keystore certificate configuration:
+    # - certName: "wm-cer"                      # Name of certificate in Azure Key Vault
+    #   fileName: "wm_keystore.p12"             # Output keystore filename
+    #   keystoreConfig:
+    #     password: "changeit"                  # Keystore password
+    #     keys:
+    #       - keyAliasName: "wmservercert"      # Alias for the private key in keystore
+
+  # Truststore Certificates (public certificates only)
+  # These are mounted by CSI driver and imported into truststore by init container
+  truststoreCerts: []
+    # Example truststore certificate configuration:
+    # - certName: "truststore-root-ca"          # Root CA certificate
+    # - certName: "truststore-intermediate-ca"  # Intermediate CA certificate
+    # - certName: "truststore-partner-cert"     # Partner/third-party certificate
+
+  # Secrets from Azure Key Vault (for truststores configured via secrets)
+  secrets: []
+    # Example:
+    # - fileName: "truststore.p12"
+    #   truststoreConfig:
+    #     aliasName: "WM_TRUSTSTORE"
+    #     description: "webMethods Truststore"
+    #     type: "PKCS12"
+    #     provider: "SunJSSE"
+    #     password: "changeit"
+
+## Truststore Certificates Configuration
+## Creates a combined truststore from multiple certificates in Azure Key Vault
+truststoreCertificates:
+  enabled: false  # Set to true to enable truststore creation from certificates
+  fileName: "wm_truststore.p12"
+  aliasName: "WM_TRUSTSTORE"
+  description: "webMethods Truststore from Azure Key Vault"
+  type: "PKCS12"
+  provider: "SunJSSE"
+  password: "changeit"
+  certificates: []
+    # Example certificates to import:
+    # - certName: "truststore-root-ca"
+    #   alias: "root-ca"
+    # - certName: "truststore-partner-cert"
+    #   alias: "partner-cert"

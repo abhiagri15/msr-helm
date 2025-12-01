@@ -17,9 +17,226 @@ spec:
         {{- include "webmethods-msr.selectorLabels" . | nindent 8 }}
         component: microservicesruntime
     spec:
+      {{- if and .Values.terracotta.enabled .Values.terracotta.waitForReady }}
+      serviceAccountName: {{ include "webmethods-msr.fullname" . }}
+      {{- end }}
       {{- if .Values.affinity }}
       affinity:
         {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+      {{- if or (and .Values.terracotta.enabled .Values.terracotta.waitForReady) .Values.azureKeyVault.enabled }}
+      initContainers:
+      {{- if .Values.azureKeyVault.enabled }}
+      # ============================================================================
+      # Azure Key Vault Certificate Conversion Init Container
+      # ============================================================================
+      # This init container retrieves certificates from Azure Key Vault and converts
+      # them into Java-compatible PKCS12 keystores and truststores.
+      #
+      # Why Azure CLI?
+      # - Azure Key Vault stores certificates in a proprietary PFX format
+      # - This format uses legacy RC2-40-CBC encryption incompatible with:
+      #   * Standard OpenSSL (even with -legacy flag)
+      #   * Python cryptography library
+      #   * Java keytool direct import
+      # - Azure CLI has built-in support for this proprietary format
+      #
+      # Process Flow:
+      # 1. Install Azure CLI and OpenSSL tools
+      # 2. Authenticate using AKS kubelet managed identity
+      # 3. Download certificates from Azure Key Vault
+      # 4. Convert to PEM format (separate .crt and .key files)
+      # 5. Create Java-compatible PKCS12 keystores/truststores
+      # 6. Verify with keytool
+      #
+      # For detailed documentation, see: AZURE_KEYVAULT_SETUP.md
+      # ============================================================================
+      - name: copy-keyvault-keystores
+        image: eclipse-temurin:11-jdk  # Debian-based for better Azure CLI support
+        command: ['bash', '-c']
+        args:
+        - |
+          echo "Converting and copying keystores from Azure Key Vault to MSR security directory..."
+
+          # ========================================================================
+          # Step 1: Install Azure CLI and OpenSSL
+          # ========================================================================
+          # Using Debian-based image provides better package support than Alpine
+          echo "Installing Azure CLI and OpenSSL..."
+          apt-get update -qq
+          apt-get install -y -qq curl openssl ca-certificates apt-transport-https lsb-release gnupg
+
+          # Add Microsoft signing key and Azure CLI repository
+          mkdir -p /etc/apt/keyrings
+          curl -sLS https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" > /etc/apt/sources.list.d/azure-cli.list
+
+          # Install Azure CLI
+          apt-get update -qq
+          apt-get install -y -qq azure-cli
+
+          echo "Azure CLI installed successfully"
+          az version
+
+          # ========================================================================
+          # Step 2: Create Keystore Directory
+          # ========================================================================
+          mkdir -p /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores
+
+          # ========================================================================
+          # Step 3: Process Keystore Certificates (from CSI mounted secrets)
+          # ========================================================================
+          # Certificates are already mounted by Azure Key Vault CSI driver at /mnt/secrets-store
+          # The CSI driver handles authentication using the Azure Key Vault Secrets Provider identity
+          # NOTE: Azure Key Vault CSI driver mounts certificates as PEM format, not PKCS12
+          {{- range .Values.azureKeyVault.certificates }}
+          echo "Processing certificate {{ .certName }} from CSI mounted secrets..."
+
+          # Check if certificate file exists in CSI mount
+          if [ -f "/mnt/secrets-store/{{ .fileName }}" ]; then
+            echo "Found {{ .fileName }} in CSI mount"
+
+            # Check if the file is PEM format (starts with ----BEGIN)
+            if head -1 "/mnt/secrets-store/{{ .fileName }}" | grep -q "BEGIN"; then
+              echo "Certificate is in PEM format, converting to PKCS12..."
+
+              # Extract private key and certificate from PEM
+              openssl pkcs12 -export \
+                -in "/mnt/secrets-store/{{ .fileName }}" \
+                -out "/opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .fileName }}" \
+                -password pass:{{ .keystoreConfig.password | default "changeit" }} \
+                -name "{{ if .keystoreConfig.keys }}{{ (index .keystoreConfig.keys 0).keyAliasName }}{{ else }}wm_cer{{ end }}" \
+                2>&1 || echo "WARNING: OpenSSL conversion failed"
+
+              echo "Converted PEM to PKCS12 format"
+            else
+              echo "Certificate is already in binary format, copying directly..."
+              cp /mnt/secrets-store/{{ .fileName }} /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .fileName }}
+            fi
+
+            chmod 644 /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .fileName }}
+            echo "Successfully created keystore {{ .fileName }}"
+
+            # Verify the PKCS12 keystore with keytool
+            echo "Verifying Java keystore compatibility:"
+            keytool -list -v \
+              -keystore /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .fileName }} \
+              -storepass {{ .keystoreConfig.password | default "changeit" }} \
+              -storetype PKCS12 2>&1 | head -30 || echo "Keystore verification failed - check password or format"
+          else
+            echo "WARNING: Certificate file {{ .fileName }} not found in CSI mount at /mnt/secrets-store/"
+            echo "Available files in /mnt/secrets-store/:"
+            ls -la /mnt/secrets-store/ 2>/dev/null || echo "Cannot list /mnt/secrets-store/"
+          fi
+          {{- end }}
+
+          # Copy all secrets from Key Vault mount (if any)
+          {{- range .Values.azureKeyVault.secrets }}
+          if [ -f "/mnt/secrets-store/{{ .fileName }}" ]; then
+            echo "Copying {{ .fileName }} to custom keystore directory..."
+            cp /mnt/secrets-store/{{ .fileName }} /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/
+            chmod 644 /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .fileName }}
+            echo "Successfully copied {{ .fileName }}"
+          else
+            echo "WARNING: {{ .fileName }} not found in Key Vault mount!"
+          fi
+          {{- end }}
+
+          echo "Keystore conversion and copy operation completed."
+
+          # Process truststore certificates from Key Vault
+          {{- if .Values.truststoreCertificates.enabled }}
+          echo "Creating truststore from Azure Key Vault certificates using keytool..."
+
+          # Truststore path and password
+          TRUSTSTORE_PATH="/opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .Values.truststoreCertificates.fileName }}"
+          TRUSTSTORE_PASS="{{ .Values.truststoreCertificates.password }}"
+
+          # Delete truststore if it exists
+          rm -f "$TRUSTSTORE_PATH"
+
+          # Process each certificate
+          CERT_COUNT=0
+          {{- range .Values.truststoreCertificates.certificates }}
+          # Check for certificate with or without .crt extension (secrets are mounted without extension)
+          if [ -f "/mnt/secrets-store/{{ .certName }}" ]; then
+            echo "Importing certificate {{ .certName }} with alias {{ .alias }}..."
+            CERT_FILE="/mnt/secrets-store/{{ .certName }}"
+          elif [ -f "/mnt/secrets-store/{{ .certName }}.crt" ]; then
+            echo "Importing certificate {{ .certName }} with alias {{ .alias }}..."
+            CERT_FILE="/mnt/secrets-store/{{ .certName }}.crt"
+          else
+            echo "WARNING: Certificate {{ .certName }} not found in Key Vault mount!"
+            CERT_FILE=""
+          fi
+
+          if [ -n "$CERT_FILE" ]; then
+            # Use keytool to import the certificate with its alias
+            keytool -importcert               -noprompt               -trustcacerts               -alias "{{ .alias }}"               -file "$CERT_FILE"               -keystore "$TRUSTSTORE_PATH"               -storetype PKCS12               -storepass "$TRUSTSTORE_PASS" 2>&1 || {
+                echo "ERROR: Failed to import certificate {{ .certName }}"
+              }
+            CERT_COUNT=$((CERT_COUNT + 1))
+          fi
+          {{- end }}
+
+          if [ "$CERT_COUNT" -gt "0" ]; then
+            chmod 644 "$TRUSTSTORE_PATH"
+            echo "Successfully created truststore {{ .Values.truststoreCertificates.fileName }} with $CERT_COUNT certificate(s)"
+            echo "Listing truststore contents:"
+            keytool -list -keystore "$TRUSTSTORE_PATH" -storepass "$TRUSTSTORE_PASS" -storetype PKCS12 2>&1 || echo "Could not list truststore"
+          else
+            echo "ERROR: No truststore certificates found! Truststore will not be created."
+          fi
+          {{- end }}
+
+
+          echo "All keystore and truststore operations completed."
+          ls -la /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/
+        volumeMounts:
+        - name: keyvault-store
+          mountPath: /mnt/secrets-store
+          readOnly: true
+        - name: msr-data
+          mountPath: /opt/softwareag/IntegrationServer/instances/default/config
+          subPath: config
+      {{- end }}
+      {{- if and .Values.terracotta.enabled .Values.terracotta.waitForReady }}
+      - name: wait-for-terracotta
+        image: bitnami/kubectl:latest
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Waiting for Terracotta servers to be ready..."
+          MAX_WAIT=600  # 10 minutes maximum wait time
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            # Check if any Terracotta pods exist
+            POD_COUNT=$(kubectl get pods -l app=terracotta -n {{ .Values.global.namespace }} --no-headers 2>/dev/null | wc -l)
+
+            if [ "$POD_COUNT" -eq "0" ]; then
+              echo "WARNING: No Terracotta pods found in namespace {{ .Values.global.namespace }}"
+              echo "Terracotta is enabled in MSR config but no Terracotta pods exist!"
+              echo "MSR will start anyway, but Terracotta cache will need to be started manually."
+              echo "To fix: Deploy Terracotta cluster or set terracotta.enabled=false in MSR values"
+              exit 0  # Allow MSR to start
+            fi
+
+            # Terracotta pods exist - wait for them to be ready
+            if kubectl wait --for=condition=ready pod -l app=terracotta -n {{ .Values.global.namespace }} --timeout=30s 2>/dev/null; then
+              echo "All Terracotta servers are ready. Starting MSR..."
+              exit 0
+            fi
+
+            echo "Still waiting for Terracotta pods to be ready... ($ELAPSED/$MAX_WAIT seconds)"
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
+          done
+
+          echo "ERROR: Timeout waiting for Terracotta pods after $MAX_WAIT seconds"
+          echo "MSR will start anyway, but you may need to manually start Terracotta cache"
+          exit 0  # Allow MSR to start even if timeout
+      {{- end }}
       {{- end }}
       containers:
       - name: msr
@@ -42,6 +259,12 @@ spec:
           value: {{ .Values.jvm.maxMemory | quote }}
         - name: SAG_IS_CONFIG_PROPERTIES
           value: "/opt/softwareag/IntegrationServer/application.properties"
+        {{- if or .Values.jdbc.enabled .Values.jdbcPool.enabled .Values.jdbcAdapter.enabled }}
+        envFrom:
+        - secretRef:
+            name: {{ include "webmethods-msr.fullname" . }}-jdbc-secrets
+            optional: true
+        {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
         {{- if .Values.healthProbes.startup.enabled }}
@@ -84,16 +307,55 @@ spec:
         - name: msr-data
           mountPath: /opt/softwareag/IntegrationServer/instances/default/logs
           subPath: logs
-        {{- if .Values.jdbc.enabled }}
         - name: application-properties
           mountPath: /opt/softwareag/IntegrationServer/application.properties
           subPath: application.properties
+        {{- if .Values.terracotta.enabled }}
+        - name: terracotta-xml
+          mountPath: /opt/softwareag/IntegrationServer/config/Caching/IS_TERRACOTTA_CACHE.xml
+          subPath: IS_TERRACOTTA_CACHE.xml
+        {{- end }}
+        {{- range .Values.keystores }}
+        {{- if .fileData }}
+        - name: security-stores
+          mountPath: {{ .location }}
+          subPath: {{ .aliasName }}.{{ .type | lower }}
+        {{- end }}
+        {{- end }}
+        {{- range .Values.truststores }}
+        {{- if .fileData }}
+        - name: security-stores
+          mountPath: {{ .location }}
+          subPath: {{ .aliasName }}.{{ .type | lower }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.azureKeyVault.enabled }}
+        - name: keyvault-store
+          mountPath: {{ .Values.azureKeyVault.mountPath }}
+          readOnly: true
         {{- end }}
       volumes:
-      {{- if .Values.jdbc.enabled }}
       - name: application-properties
         configMap:
           name: {{ include "webmethods-msr.fullname" . }}-config
+      {{- if .Values.terracotta.enabled }}
+      - name: terracotta-xml
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-terracotta-xml
+      {{- end }}
+      {{- if or .Values.keystores .Values.truststores }}
+      - name: security-stores
+        secret:
+          secretName: {{ include "webmethods-msr.fullname" . }}-security
+          defaultMode: 0644
+      {{- end }}
+      {{- if .Values.azureKeyVault.enabled }}
+      - name: keyvault-store
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: {{ include "webmethods-msr.fullname" . }}-keyvault-sync
       {{- end }}
   {{- if .Values.persistence.enabled }}
   volumeClaimTemplates:
