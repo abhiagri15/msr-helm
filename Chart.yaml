@@ -1,8 +1,8 @@
 apiVersion: v2
 name: webmethods-msr
-description: webMethods MicroServices Runtime with PostgreSQL JDBC - Multi-node Cluster
+description: webMethods MicroServices Runtime with JDBC, SAP Adapter, Azure Key Vault Integration - Enterprise Multi-node Cluster
 type: application
-version: 1.1.0
+version: 2.3.0
 appVersion: "11.1.0.6"
 keywords:
   - webmethods
@@ -10,6 +10,11 @@ keywords:
   - msr
   - microservices-runtime
   - cluster
+  - azure-keyvault
+  - certificate-management
+  - jdbc-adapter
+  - sap-adapter
+  - file-access-control
 home: https://github.com/ibm-webmethods-demos
 maintainers:
   - name: webMethods Team

@@ -1,374 +1,365 @@
 # webMethods MSR Helm Chart
 
-Helm chart for deploying webMethods Microservices Runtime (MSR) v11.1.0.6 on Kubernetes with Azure Key Vault integration.
+[![Helm Version](https://img.shields.io/badge/Helm-3.12+-blue.svg)](https://helm.sh)
+[![Kubernetes Version](https://img.shields.io/badge/Kubernetes-1.28+-blue.svg)](https://kubernetes.io)
+[![MSR Version](https://img.shields.io/badge/MSR-11.1.0.6-green.svg)](https://www.softwareag.com)
+
+Enterprise-grade Helm chart for deploying **webMethods Microservices Runtime (MSR)** on Azure Kubernetes Service (AKS) with comprehensive Azure Key Vault integration, high availability, and production-ready configurations.
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** | System architecture, deployment topologies, security design, and integration patterns |
+| **[docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)** | Step-by-step deployment guides, Azure setup, troubleshooting, and upgrade procedures |
+| **[docs/ADDING-JDBC-CONNECTIONS.md](docs/ADDING-JDBC-CONNECTIONS.md)** | Guide for adding new JDBC Adapter connections with Azure Key Vault |
+| **README.md** (this file) | Quick start guide and feature overview |
+
+---
 
 ## Features
 
-- Azure Key Vault integration for keystores and truststores
-- PostgreSQL database integration
-- Universal Messaging (UM) cluster integration
-- Terracotta distributed caching
-- Horizontal Pod Autoscaler (HPA)
-- StatefulSet with persistent volumes
+### Core Capabilities
 
-## Prerequisites
+- **StatefulSet Deployment** - Stable network identities and persistent storage
+- **High Availability** - Multi-replica support with pod anti-affinity rules
+- **Auto-scaling** - Horizontal Pod Autoscaler (HPA) based on CPU/memory metrics
+- **Rolling Updates** - Zero-downtime deployments with configurable update strategy
 
-- Kubernetes cluster (AKS recommended)
-- Helm 3.x
-- Azure CLI configured
-- Azure Key Vault with CSI driver enabled
+### Azure Integration
+
+- **Azure Key Vault** - Centralized secret management with CSI driver
+- **Environment-Specific Secrets** - Prefix-based secret naming (`dev-`, `test-`, `prod-`)
+- **Azure Container Registry** - Private container image storage
+- **Azure SQL Database** - Managed database backend support
+
+### webMethods Integration
+
+- **Universal Messaging (UM)** - JMS messaging and event-driven architecture
+- **Terracotta Cache** - Distributed session clustering for HA
+- **JDBC Pool** - MSR internal database connections (ISInternal, Xref)
+- **JDBC Adapter** - Package-level database connections
+- **SAP Adapter** - RFC/BAPI connections and listeners with SNC support
+
+### Security
+
+- **Keystore Management** - Azure Key Vault certificate integration
+- **Truststore Management** - Multi-certificate truststore from Key Vault
+- **TLS/SSL Support** - HTTPS endpoints with custom certificates
+- **File Access Control** - Configurable read/write/delete paths for pub.file services
+- **Pod Security** - Non-root containers and security contexts
+
+---
 
 ## Quick Start
 
-### 1. Deploy Infrastructure
+### Prerequisites
+
+- Azure subscription with AKS cluster
+- Azure Key Vault with CSI driver enabled
+- Helm 3.12+ and kubectl configured
+- Container image in accessible registry
+
+### 1. Create Namespace
 
 ```bash
-# Create namespace
 kubectl create namespace webmethods
-
-# Deploy PostgreSQL
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm install postgresql bitnami/postgresql \
-  --namespace webmethods \
-  --set auth.postgresPassword=admin123 \
-  --set auth.database=webmethods
-
-# Deploy UM (optional)
-helm install wm-um ../um-helm \
-  --namespace webmethods \
-  --values ../um-helm/values-dev.yaml
-
-# Deploy Terracotta (optional)
-helm install terracotta-bmm ../webmethods-helm-charts/terracottabigmemorymax/helm \
-  --namespace webmethods
 ```
 
-### 2. Setup Azure Key Vault
-
-See [AZURE_KEYVAULT.md](AZURE_KEYVAULT.md) for complete setup instructions.
-
-**Quick summary:**
+### 2. Configure Azure Key Vault Secrets
 
 ```bash
-# Enable CSI driver on AKS
-az aks enable-addons \
-  --addons azure-keyvault-secrets-provider \
-  --resource-group <RG_NAME> \
-  --name <CLUSTER_NAME>
+# Set environment prefix (dev, test, or prod)
+PREFIX="dev"
+VAULT="your-keyvault-name"
 
-# Get managed identity client ID
-az aks show \
-  --resource-group <RG_NAME> \
-  --name <CLUSTER_NAME> \
-  --query addonProfiles.azureKeyvaultSecretsProvider.identity.clientId \
-  -o tsv
-
-# Grant Key Vault access
-az keyvault set-policy \
-  --name <VAULT_NAME> \
-  --object-id <IDENTITY_OBJECT_ID> \
-  --secret-permissions get \
-  --certificate-permissions get
+# Create required secrets
+az keyvault secret set --vault-name $VAULT --name "${PREFIX}-jdbc-pool-url" \
+  --value "jdbc:sqlserver://server:1433;database=msrdb"
+az keyvault secret set --vault-name $VAULT --name "${PREFIX}-jdbc-pool-username" \
+  --value "sqladmin"
+az keyvault secret set --vault-name $VAULT --name "${PREFIX}-jdbc-pool-password" \
+  --value "YourSecurePassword"
 ```
 
-### 3. Create Certificates in Azure Key Vault
-
-**Keystore (with private key):**
-```bash
-# Generate self-signed certificate
-openssl req -x509 -newkey rsa:2048 -nodes \
-  -keyout wm-cert.key -out wm-cert.crt -days 365 \
-  -subj "/CN=webmethods-msr/O=YourOrg/C=US"
-
-# Convert to PKCS12
-openssl pkcs12 -export -in wm-cert.crt -inkey wm-cert.key \
-  -out wm-cert.p12 -passout pass:
-
-# Import to Key Vault as Certificate
-az keyvault certificate import \
-  --vault-name <VAULT_NAME> \
-  --name wm-cer \
-  --file wm-cert.p12
-```
-
-**Truststore certificates (public certs only):**
-```bash
-# Store as Secrets (not Certificates)
-az keyvault secret set \
-  --vault-name <VAULT_NAME> \
-  --name truststore-root-ca \
-  --file root-ca.crt
-
-az keyvault secret set \
-  --vault-name <VAULT_NAME> \
-  --name truststore-partner-cert \
-  --file partner.crt
-
-# Repeat for all truststore certificates
-```
-
-### 4. Configure values-dev.yaml
-
-Update Azure Key Vault settings:
+### 3. Update values-dev.yaml
 
 ```yaml
 azureKeyVault:
   enabled: true
-  vaultName: "wM-kv"
-  tenantId: "YOUR_TENANT_ID"
-  clientId: "YOUR_MANAGED_IDENTITY_CLIENT_ID"
-
-keystoreCertificate:
-  enabled: true
-  certName: "wm-cer"
-  keystoreFileName: "wm_keystore.p12"
-  aliasName: "WM_KEYSTORE"
-  password: "changeit"
-
-truststoreCertificates:
-  enabled: true
-  fileName: "wm_truststore.p12"
-  aliasName: "WM_TRUSTSTORE"
-  password: "changeit"
-  certificates:
-    - certName: "truststore-root-ca"
-      alias: "root-ca"
-    - certName: "truststore-partner-cert"
-      alias: "partner-cert"
+  vaultName: "your-keyvault-name"
+  tenantId: "your-tenant-id"
+  clientId: "kubelet-identity-client-id"
+  secretKeyPrefix: "dev"
 ```
 
-### 5. Deploy MSR
+### 4. Deploy MSR
 
 ```bash
-helm install wm-msr . \
+# Deploy with all adapters (JDBC + SAP)
+helm upgrade --install wm-msr . \
   --namespace webmethods \
+  --values values.yaml \
   --values values-dev.yaml \
-  --timeout=15m
+  --values adapters/values-jdbc-adapter-dev.yaml \
+  --values adapters/values-sap-adapter-dev.yaml \
+  --timeout 15m
+
+# Or deploy without SAP adapter
+helm upgrade --install wm-msr . \
+  --namespace webmethods \
+  --values values.yaml \
+  --values values-dev.yaml \
+  --values adapters/values-jdbc-adapter-dev.yaml \
+  --timeout 15m
 ```
 
-### 6. Access MSR
+### 5. Verify Deployment
 
 ```bash
-# Port forward
-kubectl port-forward -n webmethods svc/wm-msr 5555:5555
+# Check pod status
+kubectl get pods -n webmethods -w
 
-# Open browser
-# URL: http://localhost:5555
-# Username: Administrator
-# Password: manage
+# Access MSR Admin Console
+kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
+# Open: http://localhost:5555 (Administrator/manage)
 ```
 
-## Configuration
+---
 
-### Important Values
+## Configuration Overview
+
+### Key Parameters
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `replicaCount` | Number of MSR replicas | `2` |
-| `image.repository` | MSR Docker image repository | `abiwebmethods.azurecr.io/webmethods-microservicesruntime` |
-| `image.tag` | MSR version | `11.1.0.6-dev` |
-| `persistence.enabled` | Enable persistent storage | `true` |
+| `image.repository` | Container image repository | `abiwebmethods.azurecr.io/webmethods-microservicesruntime` |
+| `image.tag` | MSR version tag | `11.1.0.6-postgresql-v2` |
+| `azureKeyVault.enabled` | Enable Azure Key Vault integration | `false` |
+| `azureKeyVault.secretKeyPrefix` | Environment prefix for secrets | `dev` |
 | `jdbcPool.enabled` | Enable MSR internal JDBC pool | `false` |
 | `jdbcAdapter.enabled` | Enable JDBC adapter connections | `false` |
-| `azureKeyVault.enabled` | Enable Azure Key Vault integration | `false` |
-| `um.enabled` | Enable Universal Messaging integration | `false` |
+| `sapAdapter.enabled` | Enable SAP adapter connections/listeners | `false` |
+| `um.enabled` | Enable Universal Messaging | `false` |
 | `terracotta.enabled` | Enable Terracotta caching | `false` |
-| `truststoreCertificates.enabled` | Enable truststore from Key Vault | `false` |
+| `fileAccessControl.enabled` | Enable file access control for pub.file | `false` |
+| `packageConfigs.enabled` | Enable package-specific app.properties | `false` |
 
-See [values-dev.yaml](values-dev.yaml) for complete configuration example.
+### Environment Files
 
-### Minimal Deployment (No Database)
+| File | Purpose |
+|------|---------|
+| `values.yaml` | Base configuration and defaults |
+| `values-dev.yaml` | Development environment overrides (core MSR config) |
+| `values-qa.yaml` | QA/Test environment overrides |
+| `values-prod.yaml` | Production environment overrides |
 
-For a minimal deployment without database or integrations:
+### Adapter Configuration Files
+
+Adapter configurations are separated into dedicated files for better maintainability:
+
+| File | Purpose |
+|------|---------|
+| `adapters/values-jdbc-adapter-dev.yaml` | JDBC Adapter connections (dev) |
+| `adapters/values-jdbc-adapter-prod.yaml` | JDBC Adapter connections (prod) |
+| `adapters/values-sap-adapter-dev.yaml` | SAP connections & listeners (dev) |
+| `adapters/values-sap-adapter-prod.yaml` | SAP connections & listeners (prod) |
+
+---
+
+## Deployment Topologies
+
+### Minimal (Development)
 
 ```bash
-helm upgrade --install wm-msr . \
-  --namespace webmethods \
-  --set image.tag=11.1.0.6-dev \
+helm upgrade --install wm-msr . -n webmethods \
   --set replicaCount=1 \
-  --set jdbcAdapter.enabled=false \
+  --set persistence.enabled=false \
   --set jdbcPool.enabled=false \
   --set um.enabled=false \
-  --set terracotta.enabled=false \
-  --set azureKeyVault.enabled=false \
-  --set truststoreCertificates.enabled=false \
-  --set persistence.enabled=true
+  --set terracotta.enabled=false
 ```
 
-**Note:** You may need to create a placeholder JDBC secrets if the pod fails to start:
-```bash
-kubectl create secret generic wm-msr-jdbc-secrets -n webmethods \
-  --from-literal=JDBC_POOL_URL=dummy \
-  --from-literal=JDBC_POOL_USERNAME=dummy \
-  --from-literal=JDBC_POOL_PASSWORD=dummy
-```
-
-## How It Works
-
-### Keystore from Azure Key Vault
-
-1. Certificate stored in Azure Key Vault (includes private key)
-2. CSI driver mounts as `.crt` and `.key` files
-3. Init container converts to PKCS12 keystore using OpenSSL
-
-### Truststore from Azure Key Vault
-
-1. Public certificates stored as Secrets in Azure Key Vault
-2. CSI driver mounts each certificate file
-3. Init container uses Java keytool to import each certificate with individual alias
-4. Result: PKCS12 truststore with visible certificate aliases in MSR Admin UI
-
-**Init container image:** `eclipse-temurin:11-jdk` (includes Azure CLI, OpenSSL, keytool)
-
-## Verification
-
-### Check deployment status
-```bash
-kubectl get pods -n webmethods -l app=wm-msr
-kubectl get statefulset -n webmethods wm-msr
-kubectl get svc -n webmethods -l app=wm-msr
-```
-
-### Check init container logs
-```bash
-kubectl logs wm-msr-0 -n webmethods -c copy-keyvault-keystores
-```
-
-Expected output:
-```
-Converting Key Vault certificate to PKCS12 keystore...
-Successfully created keystore wm_keystore.p12
-
-Creating truststore from Azure Key Vault certificates using keytool...
-Importing certificate truststore-root-ca with alias root-ca...
-Certificate was added to keystore
-Importing certificate truststore-partner-cert with alias partner-cert...
-Certificate was added to keystore
-Successfully created truststore wm_truststore.p12 with 2 certificate(s)
-```
-
-### Verify certificates in MSR UI
-1. Login to MSR: http://localhost:5555
-2. Navigate to: Security > Keystore
-3. Check WM_KEYSTORE for keystore
-4. Check WM_TRUSTSTORE > Certificate Aliases for individual truststore certificates
-
-## Troubleshooting
-
-### Pod fails to start
+### Standard (QA/Test)
 
 ```bash
-# Check events
-kubectl get events -n webmethods --sort-by='.lastTimestamp'
-
-# Check pod status
-kubectl describe pod wm-msr-0 -n webmethods
+helm upgrade --install wm-msr . -n webmethods \
+  -f values.yaml -f values-qa.yaml \
+  -f adapters/values-jdbc-adapter-qa.yaml \
+  -f adapters/values-sap-adapter-qa.yaml
 ```
 
-### Certificates not mounting
+### Enterprise (Production)
 
 ```bash
-# Check CSI driver
-kubectl get pods -n kube-system -l app=secrets-store-csi-driver
-
-# Check SecretProviderClass
-kubectl describe secretproviderclass wm-msr-keyvault-sync -n webmethods
-
-# Check CSI driver logs
-kubectl logs -n kube-system -l app=csi-secrets-store-provider-azure
+helm upgrade --install wm-msr . -n webmethods \
+  -f values.yaml -f values-prod.yaml \
+  -f adapters/values-jdbc-adapter-prod.yaml \
+  -f adapters/values-sap-adapter-prod.yaml
 ```
 
-### Certificate not found in Key Vault
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment-topologies) for detailed topology diagrams.
+
+---
+
+## Azure Key Vault Secret Naming
+
+All secrets use environment-specific prefixes:
+
+| Environment | Prefix | Example |
+|-------------|--------|---------|
+| Development | `dev-` | `dev-jdbc-pool-password` |
+| QA/Test | `test-` | `test-jdbc-pool-password` |
+| Production | `prod-` | `prod-jdbc-pool-password` |
+
+### Required Secrets
+
+| Secret Name | Description |
+|-------------|-------------|
+| `{prefix}-jdbc-pool-url` | JDBC Pool connection URL |
+| `{prefix}-jdbc-pool-username` | JDBC Pool username |
+| `{prefix}-jdbc-pool-password` | JDBC Pool password |
+| `{prefix}-jdbc-adapter-url` | JDBC Adapter connection URL |
+| `{prefix}-jdbc-adapter-username` | JDBC Adapter username |
+| `{prefix}-jdbc-adapter-password` | JDBC Adapter password |
+| `{prefix}-sap-*-user` | SAP connection username (per connection) |
+| `{prefix}-sap-*-password` | SAP connection password (per connection) |
+| `{prefix}-keystore-password` | Keystore password |
+| `{prefix}-keyalias-password` | Key alias password |
+| `{prefix}-truststore-password` | Truststore password |
+| `{prefix}-um-password` | Universal Messaging password |
+
+---
+
+## Common Operations
+
+### Scale Deployment
 
 ```bash
-# List certificates
-az keyvault certificate list --vault-name <VAULT_NAME> --output table
-
-# List secrets
-az keyvault secret list --vault-name <VAULT_NAME> --output table
+kubectl scale statefulset wm-msr --replicas=3 -n webmethods
 ```
 
-### Identity permission issues
+### View Logs
 
 ```bash
-# Check Key Vault access policy
-az keyvault show --name <VAULT_NAME> --query "properties.accessPolicies"
+kubectl logs -f wm-msr-0 -n webmethods
 ```
 
-## Updating Certificates
+### Restart Pods (Rolling)
 
-### Update keystore certificate
 ```bash
-# Re-import to Key Vault (creates new version)
-az keyvault certificate import \
-  --vault-name <VAULT_NAME> \
-  --name wm-cer \
-  --file updated-cert.p12
-
-# Restart pods
-kubectl rollout restart statefulset wm-msr -n webmethods
+kubectl rollout restart statefulset/wm-msr -n webmethods
 ```
 
-### Add truststore certificate
+### Upgrade Helm Release
+
 ```bash
-# Upload new certificate
-az keyvault secret set \
-  --vault-name <VAULT_NAME> \
-  --name truststore-new-cert \
-  --file new-cert.crt
-
-# Update values-dev.yaml
-# Add new certificate to truststoreCertificates.certificates list
-
-# Upgrade Helm release
-helm upgrade wm-msr . \
-  --namespace webmethods \
-  --values values-dev.yaml
+helm upgrade wm-msr . -n webmethods \
+  -f values.yaml -f values-dev.yaml \
+  -f adapters/values-jdbc-adapter-dev.yaml \
+  -f adapters/values-sap-adapter-dev.yaml \
+  --set image.tag="11.1.0.7"
 ```
 
-## Uninstall
+### Rollback
 
 ```bash
-# Uninstall Helm release
+helm rollback wm-msr -n webmethods
+```
+
+### Uninstall
+
+```bash
 helm uninstall wm-msr -n webmethods
-
-# Delete PVCs
-kubectl delete pvc -l app=wm-msr -n webmethods
-
-# Delete namespace (optional)
-kubectl delete namespace webmethods
+kubectl delete pvc -l app.kubernetes.io/name=webmethods-msr -n webmethods
 ```
 
-## Documentation
+---
 
-- [AZURE_KEYVAULT.md](AZURE_KEYVAULT.md) - Step-by-step Azure Key Vault integration guide
-- [CHANGELOG.md](CHANGELOG.md) - Version history and changes
+## Troubleshooting Quick Reference
+
+| Issue | Command |
+|-------|---------|
+| Pod stuck in Pending | `kubectl describe pod wm-msr-0 -n webmethods` |
+| Check events | `kubectl get events -n webmethods --sort-by='.lastTimestamp'` |
+| View MSR logs | `kubectl logs wm-msr-0 -n webmethods` |
+| Check secrets | `kubectl get secrets -n webmethods` |
+| Test DB connectivity | `kubectl exec -it wm-msr-0 -n webmethods -- nc -zv dbserver 1433` |
+
+For detailed troubleshooting, see [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md#troubleshooting).
+
+---
+
+## Architecture Highlights
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │          Azure Cloud Platform           │
+                    └─────────────────────────────────────────┘
+                                        │
+           ┌────────────────────────────┼────────────────────────────┐
+           │                            │                            │
+    ┌──────▼──────┐            ┌───────▼───────┐           ┌───────▼───────┐
+    │ Azure Key   │            │     AKS       │           │   Azure SQL   │
+    │   Vault     │◄──────────►│   Cluster     │◄─────────►│   Database    │
+    │             │  Secrets   │               │   JDBC    │               │
+    └─────────────┘            └───────┬───────┘           └───────────────┘
+                                       │
+                    ┌──────────────────┴──────────────────┐
+                    │                                     │
+             ┌──────▼──────┐                      ┌──────▼──────┐
+             │   wm-msr-0  │◄────Terracotta──────►│   wm-msr-1  │
+             │    (MSR)    │                      │    (MSR)    │
+             └──────┬──────┘                      └──────┬──────┘
+                    │                                    │
+                    └────────────────┬───────────────────┘
+                                     │
+                              ┌──────▼──────┐
+                              │  Universal  │
+                              │  Messaging  │
+                              └─────────────┘
+```
+
+For complete architecture diagrams, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## Version History
+
+### Current Version: 2.3.0 (January 2026)
+
+- **File Access Control** - Configurable read/write/delete paths for WmPublic pub.file services
+- **Package Configurations** - Environment-specific app.properties per custom package
+- **SAP SNC Support** - Enhanced SAP Adapter with Secure Network Communication
+
+### Previous Versions
+
+- **2.2.0** - Adapter separation (JDBC and SAP configs moved to `adapters/` folder)
+- **2.1.0** - Azure Key Vault enhancement, environment-specific secret prefixes
+- **2.0.0** - Azure Key Vault CSI driver integration, truststore certificate support
+- **1.0.0** - Initial release with StatefulSet and basic integrations
+
+---
 
 ## Support
 
-For issues:
-1. Check init container logs for certificate loading errors
-2. Verify Azure Key Vault access policies
-3. Ensure CSI driver is installed and running
-4. Check SecretProviderClass configuration
-5. Review MSR application logs: `kubectl logs wm-msr-0 -n webmethods`
+For issues and questions:
 
-## Version
+1. Review [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md#troubleshooting) for common solutions
+2. Check MSR logs: `kubectl logs wm-msr-0 -n webmethods`
+3. Verify Azure Key Vault access and secret names
+4. Ensure CSI driver is installed: `kubectl get pods -n kube-system -l app=secrets-store-csi-driver`
 
-Current version: **2.0.0**
+---
 
-- MSR Image: `abiwebmethods.azurecr.io/webmethods-microservicesruntime:11.1.0.6-dev`
-- Init Container: `eclipse-temurin:11-jdk` (for Azure Key Vault certificate processing)
-- Azure Key Vault integration with CSI driver
-- Keystore and truststore auto-generated from Azure Key Vault
-- Optional JDBC Pool and JDBC Adapter configuration
-- Universal Messaging and Terracotta cache support
+## License
 
-## Recent Changes (December 2024)
+This Helm chart is provided for use with licensed webMethods products from Software AG.
 
-- Fixed values mismatch between `values.yaml` and templates
-- Added `jdbcPool` and `jdbcAdapter` configuration sections
-- Added `truststoreCertificates` configuration section
-- Made JDBC secrets optional with `optional: true`
-- Updated documentation to match actual deployment parameters
-- Added minimal deployment example
+---
+
+*Maintained by: webMethods Architecture Team*
+*Last Updated: January 2026*
