@@ -259,7 +259,27 @@ spec:
           value: {{ .Values.jvm.maxMemory | quote }}
         - name: SAG_IS_CONFIG_PROPERTIES
           value: "/opt/softwareag/IntegrationServer/application.properties"
+        # SAP SNC (Secure Network Communication) environment variables
+        # Required for SAP Cryptographic Library to be recognized by WmSAP adapter
+        - name: SNC_LIB
+          value: "/opt/softwareag/IntegrationServer/lib/libsapcrypto.so"
+        - name: SECUDIR
+          value: "/opt/softwareag/IntegrationServer/packages/WmSAP/lib/sec"
+        - name: LD_LIBRARY_PATH
+          value: "/opt/softwareag/IntegrationServer/lib:/opt/softwareag/IntegrationServer/packages/WmSAP/lib:/opt/softwareag/common/lib"
+        {{- if .Values.azureKeyVault.enabled }}
+        envFrom:
         {{- if or .Values.jdbc.enabled .Values.jdbcPool.enabled .Values.jdbcAdapter.enabled }}
+        - secretRef:
+            name: {{ include "webmethods-msr.fullname" . }}-jdbc-secrets
+            optional: true
+        {{- end }}
+        {{- if or .Values.azureKeyVault.certificates .Values.truststoreCertificates.enabled .Values.um.enabled }}
+        - secretRef:
+            name: {{ include "webmethods-msr.fullname" . }}-security-secrets
+            optional: true
+        {{- end }}
+        {{- else if or .Values.jdbc.enabled .Values.jdbcPool.enabled .Values.jdbcAdapter.enabled }}
         envFrom:
         - secretRef:
             name: {{ include "webmethods-msr.fullname" . }}-jdbc-secrets
@@ -267,6 +287,33 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
+        {{- if .Values.sapAdapter.enabled }}
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - |
+                # Inject SAP Adapter settings into server.cnf
+                # These settings must be in server.cnf for SAP Adapter to recognize them
+                SERVER_CNF="/opt/softwareag/IntegrationServer/config/server.cnf"
+
+                # Wait for server.cnf to exist (MSR creates it on startup)
+                for i in 1 2 3 4 5 6 7 8 9 10; do
+                  if [ -f "$SERVER_CNF" ]; then
+                    break
+                  fi
+                  sleep 2
+                done
+
+                # Add watt.sap.snclibpath if not already present
+                if ! grep -q "watt.sap.snclibpath" "$SERVER_CNF" 2>/dev/null; then
+                  echo "" >> "$SERVER_CNF"
+                  echo "# SAP SNC Library Path (injected by Helm)" >> "$SERVER_CNF"
+                  echo "watt.sap.snclibpath={{ .Values.sapAdapter.sncLibPath | default "/opt/softwareag/IntegrationServer/lib/libsapcrypto.so" }}" >> "$SERVER_CNF"
+                fi
+        {{- end }}
         {{- if .Values.healthProbes.startup.enabled }}
         startupProbe:
           httpGet:
@@ -334,6 +381,20 @@ spec:
           mountPath: {{ .Values.azureKeyVault.mountPath }}
           readOnly: true
         {{- end }}
+        {{- /* Package-specific app.properties from ConfigMap */}}
+        {{- if .Values.packageConfigs.enabled }}
+        {{- range .Values.packageConfigs.packages }}
+        - name: package-configs
+          mountPath: /opt/softwareag/IntegrationServer/packages/{{ .name }}/app.properties
+          subPath: {{ .name }}-app.properties
+        {{- end }}
+        {{- end }}
+        {{- /* File Access Control configuration for WmPublic package */}}
+        {{- if .Values.fileAccessControl.enabled }}
+        - name: file-access-control
+          mountPath: /opt/softwareag/IntegrationServer/packages/WmPublic/config/fileAccessControl.cnf
+          subPath: fileAccessControl.cnf
+        {{- end }}
       volumes:
       - name: application-properties
         configMap:
@@ -356,6 +417,18 @@ spec:
           readOnly: true
           volumeAttributes:
             secretProviderClass: {{ include "webmethods-msr.fullname" . }}-keyvault-sync
+      {{- end }}
+      {{- /* Package-specific configurations volume */}}
+      {{- if .Values.packageConfigs.enabled }}
+      - name: package-configs
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-package-configs
+      {{- end }}
+      {{- /* File Access Control configuration volume */}}
+      {{- if .Values.fileAccessControl.enabled }}
+      - name: file-access-control
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-file-access-control
       {{- end }}
   {{- if .Values.persistence.enabled }}
   volumeClaimTemplates:

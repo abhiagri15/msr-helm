@@ -8,7 +8,7 @@ replicaCount: 2
 
 image:
   repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
-  tag: "dev"
+  tag: "11.1.0.6-dev"
   pullPolicy: Always
 
 service:
@@ -43,14 +43,14 @@ persistence:
 # JDBC POOL Configuration (MSR Internal Database for ISInternal, Xref, etc.)
 # ============================================================================
 # JDBC Pools are used by MSR internal functions like ISInternal, ISDashboardStats, Xref
-# Credentials stored in Azure Key Vault: jdbc-dev-url, jdbc-dev-username, jdbc-dev-password
+# Credentials stored in Azure Key Vault: dev-jdbc-pool-url, dev-jdbc-pool-username, dev-jdbc-pool-password
 # Pool sizing configuration is environment-specific and non-sensitive
 jdbcPool:
-  enabled: false
+  enabled: true
   pool:
     name: "IS-Pool"
     driverAlias: "DataDirect Connect JDBC SQL Server Driver"
-    dataSourceClass: "com.ddtek.jdbc.sqlserver.SQLServerDataSource"
+    dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
     minConns: 1
     maxConns: 100
     poolThreshold: 5
@@ -69,30 +69,30 @@ jdbcPool:
       failFastMode: true
 
 # ============================================================================
-# JDBC ADAPTER Configuration (WmJDBCAdapter for Integration Services)
+# JDBC ADAPTER Configuration
 # ============================================================================
-# JDBC Adapter connections are used by business integration services
-# Credentials stored in Azure Key Vault: jdbc-adapter-dev-url, jdbc-adapter-dev-username, jdbc-adapter-dev-password
-# Each connection can have different pool sizing and transaction settings
-jdbcAdapter:
-  enabled: true
-  connections:
-    - name: "DBConnection"
-      description: "Primary Database Connection for Integration Services"
-      packageName: "WmJDBCAdapter"
-      connectionType: "JDBC Adapter Connection"
-      connectionFactoryInterface: "com.wm.adapter.wmjdbc.JDBCConnectionFactory"
-      driverAlias: "Microsoft SQL Server Driver"
-      dataSourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
-      transactionType: "LOCAL_TRANSACTION"
-      # Connection pool settings (separate from MSR JDBC Pool above)
-      minPoolSize: 1
-      maxPoolSize: 10
-      poolIncrementSize: 1
-      blockTimeout: 1000
-      expireTimeout: 1000
-      startupRetryCount: 0
-      startupBackoffSecs: 10
+# JDBC Adapter connections are configured in a separate file for maintainability.
+# See: adapters/values-jdbc-adapter-dev.yaml
+#
+# Usage:
+#   helm upgrade --install wm-msr ./msr-helm \
+#     -f values-dev.yaml \
+#     -f adapters/values-jdbc-adapter-dev.yaml \
+#     -n webmethods
+# ============================================================================
+
+# ============================================================================
+# SAP ADAPTER Configuration
+# ============================================================================
+# SAP Adapter connections and listeners are configured in a separate file.
+# See: adapters/values-sap-adapter-dev.yaml
+#
+# Usage:
+#   helm upgrade --install wm-msr ./msr-helm \
+#     -f values-dev.yaml \
+#     -f adapters/values-sap-adapter-dev.yaml \
+#     -n webmethods
+# ============================================================================
 
 # High availability with pod anti-affinity
 affinity:
@@ -138,20 +138,21 @@ healthProbes:
     failureThreshold: 3
 
 # Universal Messaging Configuration
+# Password stored in Azure Key Vault: dev-um-password
 um:
-  enabled: false
+  enabled: true
   connectionEnabled: true
   connectionAlias: "IS_UM_CONNECTION"
   url: "nsp://wm-um.webmethods.svc.cluster.local:9000"
   user: "Administrator"
-  password: "manage"
+  # Password injected via environment variable from Azure Key Vault
   useCSQ: "true"
   csqSize: "-1"
   csqDrainInOrder: "true"
 
 # Terracotta Cache Manager Configuration
 terracotta:
-  enabled: false
+  enabled: true
   cacheManagerName: "IS_TERRACOTTA_CACHE"
   urls:
     - "terracotta-0.terracotta-service.webmethods.svc.cluster.local:9510"
@@ -225,21 +226,40 @@ autoscaling:
 #      --certificate-permissions get list
 #
 # For this cluster:
-#   Client ID: a7aded62-361d-4d2e-9e17-f42b4a0f437c
-#   Object ID: 24434424-b433-467a-b948-0e81e76595f2 (use this for Key Vault policy)
+#   Kubelet Identity Client ID: 29cefdea-4779-43cd-9fb0-f9660bb69927
+#   Kubelet Identity Object ID: f9cf8c80-b86f-41e0-a4fb-09110f99ec30
+#   CSI Driver Identity Client ID: e08a2b12-1b21-4660-927a-63debb48df4d
+#   CSI Driver Identity Object ID: 1d5658a5-58bc-4b33-a3b6-d86185299d68 (use this for Key Vault policy)
 # ============================================================================
 azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "3448b62d-b43e-4b3f-af74-ab03bb68c1a2"  # AKS kubelet managed identity Client ID (CORRECTED)
+  clientId: "e08a2b12-1b21-4660-927a-63debb48df4d"  # Azure Key Vault CSI driver identity Client ID
   mountPath: "/mnt/secrets-store"
+
+  # Environment-specific prefix for secret names in Azure Key Vault
+  # Secrets will be retrieved as: {secretKeyPrefix}-{secretName}
+  # Example: dev-jdbc-pool-password, dev-keystore-password, dev-um-password
+  secretKeyPrefix: "dev"
 
   # KEYSTORE Certificates (Certificate + Private Key)
   # These certificates represent YOUR server's identity
   # Upload to Azure Key Vault as Certificate with private key (PKCS12/PFX)
-  # DISABLED: No keystore certificates configured for JDBC-only setup
-  certificates: []
+  # Passwords stored in Azure Key Vault: dev-keystore-password, dev-keyalias-password
+  certificates:
+    - certName: "wm-cer"
+      fileName: "wm_keystore.p12"
+      keystoreConfig:
+        aliasName: "WM_KEYSTORE"
+        description: "webMethods Keystore from Azure Key Vault (Dev)"
+        type: "PKCS12"
+        provider: "SUN"
+        # Password injected via environment variable from Azure Key Vault
+        isHsm: false
+        keys:
+          - keyAliasName: "wm-cer"
+            # Key alias password injected via environment variable from Azure Key Vault
 
   # Additional secrets can be stored here (not commonly used)
   secrets: []
@@ -265,25 +285,168 @@ azureKeyVault:
 #     --file root-ca.crt
 # ============================================================================
 truststoreCertificates:
-  enabled: false
+  enabled: true
   fileName: "wm_truststore.p12"
   aliasName: "WM_TRUSTSTORE"
   description: "webMethods Truststore from Azure Key Vault (Dev)"
   type: "PKCS12"
   provider: "SUN"
-  password: "changeit"
+  # Password stored in Azure Key Vault: dev-truststore-password
+  # Password injected via environment variable from Azure Key Vault
 
   # List of trusted certificates to include in truststore
   # Each certificate must exist in Azure Key Vault (Secrets section as PEM files)
   # These certificates are public certificates only (no private keys)
+  # Certificate names in Key Vault are prefixed with secretKeyPrefix: dev-truststore-root-ca, etc.
   certificates:
-    - certName: "truststore-root-ca"          # Root CA certificate (Secret in Key Vault)
+    - certName: "truststore-root-ca"          # Root CA certificate (Key Vault: dev-truststore-root-ca)
       alias: "root-ca"                        # Alias in PKCS12 truststore
-    - certName: "truststore-intermediate-ca"  # Intermediate CA certificate
+    - certName: "truststore-intermediate-ca"  # Intermediate CA certificate (Key Vault: dev-truststore-intermediate-ca)
       alias: "intermediate-ca"
-    - certName: "truststore-partner-cert"     # Partner's public certificate (Partner Corp)
+    - certName: "truststore-partner-cert"     # Partner's public certificate (Key Vault: dev-truststore-partner-cert)
       alias: "partner-cert"
-    - certName: "truststore-payment-gateway"  # Payment Gateway partner certificate
+    - certName: "truststore-payment-gateway"  # Payment Gateway partner certificate (Key Vault: dev-truststore-payment-gateway)
       alias: "payment-gateway"
-    - certName: "truststore-banking-partner"  # Banking partner certificate (Global Bank)
+    - certName: "truststore-banking-partner"  # Banking partner certificate (Key Vault: dev-truststore-banking-partner)
       alias: "banking-partner"
+
+# ============================================================================
+# PACKAGE CONFIGURATIONS (Environment-Specific app.properties)
+# ============================================================================
+# This section allows you to define environment-specific app.properties for
+# each custom package. These configurations are mounted at runtime via ConfigMap,
+# following the 12-Factor App principle of separating config from code.
+#
+# Benefits:
+# - Single Docker image for all environments
+# - Config changes without rebuilding image
+# - GitOps-friendly (values files are source of truth)
+# - Easy rollback via Helm
+#
+# For sensitive values (API keys, passwords):
+# - Store in Azure Key Vault
+# - Reference using ${ENV_VAR} syntax
+# - Add corresponding secrets to secretproviderclass.yaml
+#
+# Example usage:
+#   packageConfigs:
+#     enabled: true
+#     packages:
+#       - name: MyPackage
+#         appProperties: |
+#           api.url=https://dev-api.example.com
+#           api.key=${MY_PACKAGE_API_KEY}
+# ============================================================================
+packageConfigs:
+  enabled: true
+  packages:
+    # -------------------------------------------------------------------------
+    # AbTest Package Configuration - Development Environment
+    # -------------------------------------------------------------------------
+    - name: AbTest
+      appProperties: |
+        # API Configuration - Dev Environment
+        apibaseurl=https://api-dev.demo.com/v1
+        apiKey=${ABTEST_API_KEY}
+
+        # Agency/Program IDs - Dev
+        agencyId=U5555555555555555-DEV-AB
+        programId=8555555555555555-DEV-AB
+
+        # XML Namespace
+        xmlns=http://www.pj.com/api/v1/
+
+        # Form/Field IDs - Dev Environment
+        projectChecklistFormId=8555555555555-DEV-AB
+        singleLineAttachmentId=15555555555555-DEV-AB
+        meterNumberDataFieldId=U4444444444444-DEV-AB
+        meterSetDateDataFieldId=G444444444444-DEV-AB
+        revisedSiteDiagramAttachmentId=ERRRRRRRRRRRRR-DEV-AB
+        siteDiagramAttachmentId=9EEEEEEEEEEE-DEV-AB
+        hostCustomerSectorFieldId=4DDDDDDDDDDDDDD-DEV-AB
+        inspectionFormId=FFFFFFFFFF-DEV-AB
+        ahjFormId=FFFFFFFFFF-DEV-AB
+        applicationFormId=GGGGGGGG-DEV-AB
+
+        # File Paths - Dev Environment
+        attachmentFilePath=/dev/smud456Single Line Drawings
+        projectsFilePath=/dev/smud456/ProjectsExport
+        siteDiagramFilePath=/dev/smud123/Site Drawings
+
+        # Security Config
+        hashAlgorithm=HmacSHA1
+        TOTPReturnDigits=60
+
+    # -------------------------------------------------------------------------
+    # AbTest2 Package Configuration - Development Environment
+    # -------------------------------------------------------------------------
+    - name: AbTest2
+      appProperties: |
+        # API Configuration - Dev Environment
+        apibaseurl=https://api-dev.demo.com/v1
+        apiKey=${ABTEST2_API_KEY}
+
+        # Agency/Program IDs - Dev
+        agencyId=U5222222222222222-DEV
+        programId=8555555555555555-DEV
+
+        # XML Namespace
+        xmlns=http://www.pj.com/api/v1/
+
+        # Form/Field IDs - Dev Environment
+        projectChecklistFormId=8555555555555-DEV
+        singleLineAttachmentId=15555555555555-DEV
+        meterNumberDataFieldId=U4444444444444-DEV
+        meterSetDateDataFieldId=G444444444444-DEV
+        revisedSiteDiagramAttachmentId=ERRRRRRRRRRRRR-DEV
+        siteDiagramAttachmentId=9EEEEEEEEEEE-DEV
+        hostCustomerSectorFieldId=4DDDDDDDDDDDDDD-DEV
+        inspectionFormId=FFFFFFFFFF-DEV
+        ahjFormId=FFFFFFFFFF-DEV
+        applicationFormId=GGGGGGGG-DEV
+
+        # File Paths - Dev Environment
+        attachmentFilePath=/dev/smud456Single Line Drawings
+        projectsFilePath=/dev/smud456/ProjectsExport
+        siteDiagramFilePath=/dev/smud123/Site Drawings
+
+        # Security Config
+        hashAlgorithm=HmacSHA1
+        TOTPReturnDigits=60
+
+    # -------------------------------------------------------------------------
+    # AbTest3 Package Configuration - Development Environment
+    # -------------------------------------------------------------------------
+    # - name: AbTest3
+    #   appProperties: |
+    #     # Add AbTest3 dev-specific properties here
+    #     example.property=dev-value
+
+# ============================================================================
+# FILE ACCESS CONTROL Configuration (WmPublic package - pub.file services)
+# ============================================================================
+# Controls which directories/files the pub.file services can read, write, delete
+# This creates fileAccessControl.cnf in WmPublic/config directory
+#
+# Path Format:
+# - Use semicolons (;) to separate multiple paths (no spaces)
+# - Single asterisk (*) matches directory names
+# - Double asterisk (**) matches multiple nested folders and files
+# - Paths are case-sensitive on Linux
+#
+# Reference: https://www.ibm.com/docs/en/webmethods-integration/wm-integration-server/10.15.0?topic=guide-file-folder
+# ============================================================================
+fileAccessControl:
+  enabled: true
+
+  # Directories/files with READ permission for pub.file services
+  # Dev environment: Allow reading from temp, logs, config, and data directories
+  allowedReadPaths: "/tmp;/opt/softwareag/IntegrationServer/instances/default/logs/**;/opt/softwareag/IntegrationServer/instances/default/config/**;/opt/softwareag/IntegrationServer/instances/default/data/**;/dev/smud456/**;/dev/smud123/**"
+
+  # Directories/files with WRITE permission for pub.file services
+  # Dev environment: Allow writing to temp, logs, and data directories
+  allowedWritePaths: "/tmp;/opt/softwareag/IntegrationServer/instances/default/logs/**;/opt/softwareag/IntegrationServer/instances/default/data/**;/dev/smud456/**;/dev/smud123/**"
+
+  # Directories/files with DELETE permission for pub.file services
+  # Dev environment: Allow deleting from temp directory only (restrictive)
+  allowedDeletePaths: "/tmp"

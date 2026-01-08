@@ -216,12 +216,24 @@ autoscaling:
 ## - AKS cluster with Azure Key Vault CSI driver enabled
 ## - Kubelet managed identity with Key Vault access (get, list permissions on secrets and certificates)
 ##
+## Secret Key Naming Convention:
+## All secrets in Azure Key Vault use environment-specific prefixes:
+##   - dev_  : Development environment (e.g., dev-jdbc-pool-password)
+##   - test_ : QA/Test environment (e.g., test-jdbc-pool-password)
+##   - prod_ : Production environment (e.g., prod-jdbc-pool-password)
+##
 ## For detailed setup instructions, see: AZURE_KEYVAULT_SETUP.md
 azureKeyVault:
   enabled: false  # Set to true to enable Azure Key Vault integration
   vaultName: ""  # Name of the Azure Key Vault (e.g., "wM-kv")
   tenantId: ""  # Azure tenant ID (get from: az account show --query tenantId -o tsv)
   clientId: ""  # Client ID of the kubelet managed identity (get from: az aks show --query identityProfile.kubeletidentity.clientId -o tsv)
+
+  # Environment-specific prefix for secret names in Azure Key Vault
+  # Use "dev" for development, "test" for QA, "prod" for production
+  # Secrets will be retrieved as: {secretKeyPrefix}-{secretName}
+  # Example: dev-jdbc-pool-password, test-jdbc-pool-password, prod-jdbc-pool-password
+  secretKeyPrefix: "dev"
 
   # Keystore Certificates (certificates with private keys)
   # These are downloaded using Azure CLI and converted to Java PKCS12 keystores by init container
@@ -269,3 +281,46 @@ truststoreCertificates:
     #   alias: "root-ca"
     # - certName: "truststore-partner-cert"
     #   alias: "partner-cert"
+
+## Package Configurations (Environment-Specific app.properties)
+## This section allows you to define environment-specific app.properties for
+## each custom package. These configurations are mounted at runtime via ConfigMap.
+packageConfigs:
+  enabled: false  # Set to true to enable package-specific configurations
+  packages: []
+    # Example package configuration:
+    # - name: MyPackage
+    #   appProperties: |
+    #     api.url=https://api.example.com/v1
+    #     api.key=${MY_PACKAGE_API_KEY}
+    #     timeout.seconds=30
+
+## ============================================================================
+## File Access Control Configuration (WmPublic package - pub.file services)
+## ============================================================================
+## Controls which directories/files the Integration Server pub.file services can access
+## This creates the fileAccessControl.cnf file in WmPublic/config directory
+##
+## Path Specification Format:
+## - Single files: Specify exact path to restrict access to that file only
+## - Directories: Grant access to all files within that directory
+## - Multiple paths: Use semicolons as delimiters (no spaces between entries)
+## - Wildcards: * matches directory names; ** matches multiple nested folders
+## - Paths are case-sensitive on Linux and must use forward slashes
+##
+## Reference: https://www.ibm.com/docs/en/webmethods-integration/wm-integration-server/10.15.0?topic=guide-file-folder
+## ============================================================================
+fileAccessControl:
+  enabled: false  # Set to true to enable file access control configuration
+
+  # Directories/files with read permission for pub.file services
+  # Example: /tmp;/opt/data;/mnt/shared/**
+  allowedReadPaths: ""
+
+  # Directories/files with write permission for pub.file services
+  # Example: /tmp;/opt/data/output
+  allowedWritePaths: ""
+
+  # Directories/files with delete permission for pub.file services
+  # Example: /tmp
+  allowedDeletePaths: ""

@@ -1,5 +1,4 @@
-﻿{{- if .Values.jdbc.enabled }}
-apiVersion: v1
+﻿apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-config
@@ -8,40 +7,355 @@ metadata:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
   application.properties: |
-    # JDBC Pool Configuration
-    jdbc.{{ .Values.jdbc.pool.name }}.dbURL={{ .Values.jdbc.pool.dbURL }}
-    jdbc.{{ .Values.jdbc.pool.name }}.description=
-    jdbc.{{ .Values.jdbc.pool.name }}.driverAlias={{ .Values.jdbc.pool.driverAlias }}
-    jdbc.{{ .Values.jdbc.pool.name }}.expireTime={{ .Values.jdbc.pool.expireTime }}
-    jdbc.{{ .Values.jdbc.pool.name }}.keystoreAlias=
-    jdbc.{{ .Values.jdbc.pool.name }}.maxConns={{ .Values.jdbc.pool.maxConns }}
-    jdbc.{{ .Values.jdbc.pool.name }}.minConns={{ .Values.jdbc.pool.minConns }}
-    jdbc.{{ .Values.jdbc.pool.name }}.password={{ .Values.jdbc.pool.password }}
-    jdbc.{{ .Values.jdbc.pool.name }}.poolThreshold={{ .Values.jdbc.pool.poolThreshold }}
-    jdbc.{{ .Values.jdbc.pool.name }}.snoopenabled=false
-    jdbc.{{ .Values.jdbc.pool.name }}.snoopparms=ddtdbg.ProtocolTraceEnable=true;ddtdbg.ProtocolTraceMaxline=16;ddtdbg.ProtocolTraceLocation=logs/snoop/{{ .Values.jdbc.pool.name }}.log;ddtdbg.ProtocolTraceShowTime=true
-    jdbc.{{ .Values.jdbc.pool.name }}.spyenabled=false
-    jdbc.{{ .Values.jdbc.pool.name }}.spyparms=SpyAttributes=(log=(file)logs/spy/{{ .Values.jdbc.pool.name }}.log;logTName=yes;timestamp=yes)
-    jdbc.{{ .Values.jdbc.pool.name }}.tlsVersion=
-    jdbc.{{ .Values.jdbc.pool.name }}.truststoreAlias=
-    jdbc.{{ .Values.jdbc.pool.name }}.useSSL={{ .Values.jdbc.pool.useSSL }}
-    jdbc.{{ .Values.jdbc.pool.name }}.userid={{ .Values.jdbc.pool.username }}
-    jdbc.{{ .Values.jdbc.pool.name }}.waitingThread={{ .Values.jdbc.pool.waitingThread }}
-    
+    # Enable TRACE logging for JDBC Connection Manager
+    watt.debug.jdbc=true
+    watt.server.jdbcLogLevel=TRACE
+
+    # SAP SNC Library Path Configuration
+    # This property tells the WmSAP adapter where to find the SAP Cryptographic Library
+    watt.sap.snclibpath=/opt/softwareag/IntegrationServer/lib/libsapcrypto.so
+
+    # ========================================================================
+    # File Access Control Configuration (WmPublic package)
+    # ========================================================================
+    # NOTE: File access control for pub.file services is configured via
+    # fileAccessControl.cnf file mounted at WmPublic/config/fileAccessControl.cnf
+    # See values.yaml: fileAccessControl.enabled, allowedReadPaths, allowedWritePaths, allowedDeletePaths
+    # Reference: https://www.ibm.com/docs/en/webmethods-integration/wm-integration-server/10.15.0?topic=guide-file-folder
+
+    {{- if .Values.jdbcAdapter.enabled }}
+    # ========================================================================
+    # JDBC Adapter Package Auto-Enable Configuration
+    # ========================================================================
+    # Enable WmJDBCAdapter package automatically on startup
+    watt.server.packages.WmJDBCAdapter.enabled=true
+
+    # ========================================================================
+    # Disable Legacy JDBC Connections (hardcoded in package)
+    # ========================================================================
+    # Disable old jdbc connection baked into AbTest package image
+    artConnection.AbTest.AbTest.jdbc.connectionEnabled=false
+
+    # ========================================================================
+    # JDBC Adapter Connection Configuration (artConnection)
+    # ========================================================================
+    # ART Connection properties for JDBC Adapter connections
+    # Reference: https://jahntech.com/resources/blog/update-connection-details-for-jdbc-adapter-on-webmethods-integration-server/
+    {{- range .Values.jdbcAdapter.connections }}
+    # Connection: {{ .packageName }}.{{ .folderName }}.{{ .name }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionEnabled=true
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.serverName={{ .serverName }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.databaseName={{ .databaseName }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.portNumber={{ .portNumber }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.networkProtocol={{ .networkProtocol }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.user={{ .user }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.password={{ .password }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.datasourceClass={{ .dataSourceClass }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.otherProperties={{ .otherProperties }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionManagerSettings.minimumPoolSize={{ .minPoolSize }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionManagerSettings.maximumPoolSize={{ .maxPoolSize }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionManagerSettings.poolIncrementSize={{ .poolIncrementSize }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionManagerSettings.blockingTimeout={{ .blockTimeout }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionManagerSettings.expireTimeout={{ .expireTimeout }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionManagerSettings.startupRetryCount={{ .startupRetryCount }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionManagerSettings.startupBackoffSecs={{ .startupBackoffSecs }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionManagerSettings.poolable=true
+    {{- end }}
+    {{- end }}
+
+    {{- if .Values.sapAdapter.enabled }}
+    # ========================================================================
+    # SAP Adapter Package Auto-Enable Configuration
+    # ========================================================================
+    # Enable WmSAP package automatically on startup
+    watt.server.packages.WmSAP.enabled=true
+
+    # ========================================================================
+    # SAP Adapter Connection Configuration (artConnection)
+    # ========================================================================
+    # ART Connection properties for SAP Adapter RFC connections
+    # Format: artConnection.<packageName>.<folderName>.<connectionName>.<property>
+    {{- range .Values.sapAdapter.connections }}
+    # SAP Connection: {{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionEnabled={{ .enabled }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.alias={{ .alias }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.appServerHost={{ .appServerHost }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.client={{ .client }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.systemId={{ .systemId }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.systemNumber={{ .systemNumber }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.language={{ .language }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.loadBalancing={{ .loadBalancing }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.messageServerHost={{ .messageServerHost }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.logonGroup={{ .logonGroup }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.gatewayHost={{ .gatewayHost }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.gatewayService={{ .gatewayService }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.user={{ .user }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.password={{ .password }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sncMode={{ .sncMode }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sncMyName={{ .sncMyName }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sncPartnerName={{ .sncPartnerName }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sncQualityOfService={{ .sncQualityOfService }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.connectionType={{ .connectionType }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.abapDebug={{ .abapDebug }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.rfcTrace={{ .rfcTrace }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sapGui={{ .sapGui }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.logTransactionStatus={{ .logTransactionStatus }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.storeMsgBody={{ .storeMsgBody }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.repositoryServer={{ .repositoryServer }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.programId={{ .programId }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.routerString={{ .routerString }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionManagerSettings.minimumPoolSize={{ .minPoolSize }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionManagerSettings.maximumPoolSize={{ .maxPoolSize }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionManagerSettings.poolIncrementSize={{ .poolIncrementSize }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionManagerSettings.blockingTimeout={{ .blockTimeout }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionManagerSettings.expireTimeout={{ .expireTimeout }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionManagerSettings.startupRetryCount={{ .startupRetryCount }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionManagerSettings.startupBackoffSecs={{ .startupBackoffSecs }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionManagerSettings.poolable=true
+    {{- end }}
+
+    # ========================================================================
+    # SAP Adapter Listener Configuration (artListener)
+    # ========================================================================
+    # ART Listener properties for SAP Adapter RFC listeners (inbound from SAP)
+    # Format: artListener.<packageName>.<folderName>.<listenerName>.<property>
+    {{- range .Values.sapAdapter.listeners }}
+    # SAP Listener: {{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerEnabled={{ .enabled }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.gatewayHost={{ .gatewayHost }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.gatewayService={{ .gatewayService }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.programId={{ .programId }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.repositoryServer={{ .repositoryServer }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.threadCount={{ .threadCount }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.unicode={{ .unicode }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.sncMode={{ .sncMode }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.sncMyName={{ .sncMyName }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.sncQualityOfService={{ .sncQualityOfService }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.rfcTrace={{ .rfcTrace }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.logTransactionStatus={{ .logTransactionStatus }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.storeMsgBody={{ .storeMsgBody }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.listenerSettings.authService={{ .authService }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.retryLimit={{ .retryLimit }}
+    artListener.{{ $.Values.sapAdapter.listenerPackageName }}.{{ $.Values.sapAdapter.listenerFolderName }}.{{ .name }}.retryBackoffTimeout={{ .retryBackoffTimeout }}
+    {{- end }}
+    {{- end }}
+
+    {{- if .Values.jdbcPool.enabled }}
+    # ========================================================================
+    # JDBC POOL Configuration (MSR Internal - ISInternal, Xref, etc.)
+    # ========================================================================
+    # Credentials injected via environment variables from Azure Key Vault:
+    #   - JDBC_POOL_URL, JDBC_POOL_USERNAME, JDBC_POOL_PASSWORD
+    jdbc.{{ .Values.jdbcPool.pool.name }}.dbURL=$env{JDBC_POOL_URL}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.description=MSR Internal JDBC Pool
+    jdbc.{{ .Values.jdbcPool.pool.name }}.driverAlias={{ .Values.jdbcPool.pool.driverAlias }}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.dataSourceClass={{ .Values.jdbcPool.pool.dataSourceClass }}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.expireTime={{ .Values.jdbcPool.pool.expireTime }}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.keystoreAlias=
+    jdbc.{{ .Values.jdbcPool.pool.name }}.maxConns={{ .Values.jdbcPool.pool.maxConns }}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.minConns={{ .Values.jdbcPool.pool.minConns }}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.password=$env{JDBC_POOL_PASSWORD}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.poolThreshold={{ .Values.jdbcPool.pool.poolThreshold }}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.snoopenabled=false
+    jdbc.{{ .Values.jdbcPool.pool.name }}.snoopparms=ddtdbg.ProtocolTraceEnable=true;ddtdbg.ProtocolTraceMaxline=16;ddtdbg.ProtocolTraceLocation=logs/snoop/{{ .Values.jdbcPool.pool.name }}.log;ddtdbg.ProtocolTraceShowTime=true
+    jdbc.{{ .Values.jdbcPool.pool.name }}.spyenabled=false
+    jdbc.{{ .Values.jdbcPool.pool.name }}.spyparms=SpyAttributes=(log=(file)logs/spy/{{ .Values.jdbcPool.pool.name }}.log;logTName=yes;timestamp=yes)
+    jdbc.{{ .Values.jdbcPool.pool.name }}.tlsVersion=
+    jdbc.{{ .Values.jdbcPool.pool.name }}.truststoreAlias=
+    jdbc.{{ .Values.jdbcPool.pool.name }}.useSSL={{ .Values.jdbcPool.pool.useSSL }}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.userid=$env{JDBC_POOL_USERNAME}
+    jdbc.{{ .Values.jdbcPool.pool.name }}.waitingThread={{ .Values.jdbcPool.pool.waitingThread }}
+
     # JDBC Functional Aliases
-    {{- range .Values.jdbc.functionalAliases }}
+    {{- range .Values.jdbcPool.functionalAliases }}
     jdbcfunc.{{ .name }}.connPoolAlias={{ .connPoolAlias }}
     jdbcfunc.{{ .name }}.failFastMode={{ .failFastMode }}
+    {{- end }}
     {{- end }}
 
     {{- if .Values.um.enabled }}
     # Universal Messaging Connection Alias
+    # Password injected via environment variable from Azure Key Vault
     messaging.{{ .Values.um.connectionAlias }}.enabled={{ .Values.um.connectionEnabled }}
     messaging.{{ .Values.um.connectionAlias }}.url={{ .Values.um.url }}
     messaging.{{ .Values.um.connectionAlias }}.user={{ .Values.um.user }}
-    messaging.{{ .Values.um.connectionAlias }}.password={{ .Values.um.password }}
+    messaging.{{ .Values.um.connectionAlias }}.password=$env{UM_PASSWORD}
     messaging.{{ .Values.um.connectionAlias }}.useCSQ={{ .Values.um.useCSQ }}
     messaging.{{ .Values.um.connectionAlias }}.csqSize={{ .Values.um.csqSize }}
     messaging.{{ .Values.um.connectionAlias }}.csqDrainInOrder={{ .Values.um.csqDrainInOrder }}
     {{- end }}
+
+    {{- if .Values.terracotta.enabled }}
+    # Terracotta Cache Manager Configuration
+    cachemanager.{{ .Values.terracotta.cacheManagerName }}.urls={{ join "," .Values.terracotta.urls }}
+    {{- end }}
+
+    {{- range .Values.keystores }}
+    # Keystore Configuration - {{ .aliasName }}
+    keystore.{{ .aliasName }}.ksDescription={{ .description }}
+    keystore.{{ .aliasName }}.ksType={{ .type }}
+    keystore.{{ .aliasName }}.ksStoreProviderName={{ .provider }}
+    keystore.{{ .aliasName }}.ksLocation={{ .location }}
+    keystore.{{ .aliasName }}.ksPassword={{ .password }}
+    keystore.{{ .aliasName }}.ksIsHsm={{ .isHsm }}
+    {{- range .keys }}
+    keystore.{{ $.aliasName }}.keyAlias.{{ .keyAliasName }}.keyAliasPassword={{ .keyAliasPassword }}
+    {{- end }}
+    {{- end }}
+
+    {{- range .Values.truststores }}
+    # Truststore Configuration - {{ .aliasName }}
+    truststore.{{ .aliasName }}.ksDescription={{ .description }}
+    truststore.{{ .aliasName }}.ksType={{ .type }}
+    truststore.{{ .aliasName }}.ksStoreProviderName={{ .provider }}
+    truststore.{{ .aliasName }}.ksLocation={{ .location }}
+    truststore.{{ .aliasName }}.ksPassword={{ .password }}
+    {{- end }}
+
+    {{- if .Values.azureKeyVault.enabled }}
+    {{- range $cert := .Values.azureKeyVault.certificates }}
+    {{- if $cert.keystoreConfig }}
+    # Keystore Configuration from Azure Key Vault - {{ $cert.keystoreConfig.aliasName }}
+    # Passwords injected via environment variables from Azure Key Vault
+    keystore.{{ $cert.keystoreConfig.aliasName }}.ksDescription={{ $cert.keystoreConfig.description }}
+    keystore.{{ $cert.keystoreConfig.aliasName }}.ksType={{ $cert.keystoreConfig.type }}
+    keystore.{{ $cert.keystoreConfig.aliasName }}.ksStoreProviderName={{ $cert.keystoreConfig.provider }}
+    keystore.{{ $cert.keystoreConfig.aliasName }}.ksLocation=/opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ $cert.fileName }}
+    keystore.{{ $cert.keystoreConfig.aliasName }}.ksPassword=$env{KEYSTORE_PASSWORD}
+    keystore.{{ $cert.keystoreConfig.aliasName }}.ksIsHsm={{ $cert.keystoreConfig.isHsm }}
+    {{- range $cert.keystoreConfig.keys }}
+    keystore.{{ $cert.keystoreConfig.aliasName }}.keyAlias.{{ .keyAliasName }}.keyAliasPassword=$env{KEYALIAS_PASSWORD}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- range $secret := .Values.azureKeyVault.secrets }}
+    {{- if $secret.truststoreConfig }}
+    # Truststore Configuration from Azure Key Vault - {{ $secret.truststoreConfig.aliasName }}
+    # Password injected via environment variable from Azure Key Vault
+    truststore.{{ $secret.truststoreConfig.aliasName }}.ksDescription={{ $secret.truststoreConfig.description }}
+    truststore.{{ $secret.truststoreConfig.aliasName }}.ksType={{ $secret.truststoreConfig.type }}
+    truststore.{{ $secret.truststoreConfig.aliasName }}.ksStoreProviderName={{ $secret.truststoreConfig.provider }}
+    truststore.{{ $secret.truststoreConfig.aliasName }}.ksLocation=/opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ $secret.fileName }}
+    truststore.{{ $secret.truststoreConfig.aliasName }}.ksPassword=$env{TRUSTSTORE_PASSWORD}
+    {{- end }}
+    {{- end }}
+    {{- end}}
+    {{- if .Values.truststoreCertificates.enabled }}
+
+    # Truststore Configuration from Azure Key Vault - {{ .Values.truststoreCertificates.aliasName }}
+    # Password injected via environment variable from Azure Key Vault
+    truststore.{{ .Values.truststoreCertificates.aliasName }}.ksDescription={{ .Values.truststoreCertificates.description }}
+    truststore.{{ .Values.truststoreCertificates.aliasName }}.ksType={{ .Values.truststoreCertificates.type }}
+    truststore.{{ .Values.truststoreCertificates.aliasName }}.ksStoreProviderName={{ .Values.truststoreCertificates.provider }}
+    truststore.{{ .Values.truststoreCertificates.aliasName }}.ksLocation=/opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .Values.truststoreCertificates.fileName }}
+    truststore.{{ .Values.truststoreCertificates.aliasName }}.ksPassword=$env{TRUSTSTORE_PASSWORD}
+    {{- end }}
+---
+{{- if .Values.terracotta.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-terracotta-xml
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  IS_TERRACOTTA_CACHE.xml: |
+    <ehcache name="{{ .Values.terracotta.cacheManagerName }}">
+        <diskStore path="./cacheStore/{{ .Values.terracotta.cacheManagerName }}"/>
+        <defaultCache/>
+        <terracottaConfig
+            url="{{ join "," .Values.terracotta.urls }}"
+            rejoin="true"/>
+    </ehcache>
 {{- end }}
+---
+{{- if .Values.jdbcAdapter.enabled }}
+# ============================================================================
+# JDBC Adapter Connection ConfigMap
+# ============================================================================
+# This ConfigMap contains the JDBC adapter connection configuration
+# It will be mounted and processed by an init container to create node.ndf files
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-jdbc-adapter
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  {{- range .Values.jdbcAdapter.connections }}
+  {{ .name }}.yaml: |
+    # JDBC Adapter Connection: {{ .name }}
+    # Credentials injected via environment variables from Azure Key Vault
+    name: {{ .name }}
+    description: {{ .description }}
+    packageName: {{ .packageName }}
+    connectionType: {{ .connectionType }}
+    connectionFactoryInterface: {{ .connectionFactoryInterface }}
+    transactionType: {{ .transactionType }}
+    connectionSettings:
+      driverType: DataDirect Connect JDBC Driver
+      serverName: ${JDBC_ADAPTER_SERVER}
+      databaseName: ${JDBC_ADAPTER_DATABASE}
+      portNumber: ${JDBC_ADAPTER_PORT}
+      user: ${JDBC_ADAPTER_USERNAME}
+      password: ${JDBC_ADAPTER_PASSWORD}
+      otherProperties: encrypt=true
+      networkProtocol: ""
+    poolConfig:
+      minimumPoolSize: {{ .minPoolSize }}
+      maximumPoolSize: {{ .maxPoolSize }}
+      poolIncrementSize: {{ .poolIncrementSize }}
+      blockTimeout: {{ .blockTimeout }}
+      expireTimeout: {{ .expireTimeout }}
+      startupRetryCount: {{ .startupRetryCount }}
+      startupBackoffSecs: {{ .startupBackoffSecs }}
+  {{- end }}
+{{- end }}
+---
+{{- if .Values.fileAccessControl.enabled }}
+# ============================================================================
+# File Access Control ConfigMap (WmPublic package - pub.file services)
+# ============================================================================
+# This ConfigMap creates the fileAccessControl.cnf file that controls
+# which directories/files the pub.file services can read, write, and delete.
+#
+# File location: WmPublic/config/fileAccessControl.cnf
+# Reference: https://www.ibm.com/docs/en/webmethods-integration/wm-integration-server/10.15.0?topic=guide-file-folder
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-file-access-control
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  fileAccessControl.cnf: |
+    # ========================================================================
+    # File Access Control Configuration for WmPublic pub.file Services
+    # ========================================================================
+    # This file controls which directories and files the pub.file services
+    # (pub.file:getFile, pub.file:saveFile, pub.file:deleteFile, etc.) can access.
+    #
+    # Path Format:
+    # - Use semicolons (;) to separate multiple paths (no spaces between entries)
+    # - Single asterisk (*) matches single directory level
+    # - Double asterisk (**) matches multiple nested folders and files
+    # - Paths are case-sensitive on Linux
+    # - If path contains semicolons, precede them with double backslashes (\\)
+    #
+    # Changes require WmPublic package reload or Integration Server restart
+    # ========================================================================
+
+    # Directories/files with READ permission
+    allowedReadPaths={{ .Values.fileAccessControl.allowedReadPaths }}
+
+    # Directories/files with WRITE permission
+    allowedWritePaths={{ .Values.fileAccessControl.allowedWritePaths }}
+
+    # Directories/files with DELETE permission
+    allowedDeletePaths={{ .Values.fileAccessControl.allowedDeletePaths }}
+{{- end }}
+
