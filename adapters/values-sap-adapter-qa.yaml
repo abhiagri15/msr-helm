@@ -1,0 +1,179 @@
+# ============================================================================
+# SAP ADAPTER Configuration - QA Environment
+# ============================================================================
+# Usage:
+#   helm upgrade --install wm-msr ./msr-helm \
+#     -f values-qa.yaml \
+#     -f adapters/values-sap-adapter-qa.yaml \
+#     -n webmethods-qa
+#
+# SNC Credentials:
+#   cred_v2 and PSE files are stored in Azure Key Vault (base64 encoded)
+#   and mounted as a K8s Secret by the deployment pipeline.
+#   Key Vault secrets: qa-sap-snc-credv2, qa-sap-snc-pse
+#
+# Passwords in Azure Key Vault:
+#   test-sapadapter-customerprograms-password
+#   test-sapadapter-rfcagency-password
+# ============================================================================
+
+sapAdapter:
+  enabled: true
+
+  # SAP SNC Library Path
+  sncLibPath: "/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so"
+
+  # SAP SNC External Credentials (mounted from K8s Secret instead of baked-in)
+  snc:
+    externalCredentials: true
+    secretName: "sap-snc-credentials"
+    pseFileName: "snc.pse"
+
+  connectionPackageName: "SmSAPConn"
+  connectionFolderName: "SmSAPConn"
+  listenerPackageName: "SmSAPListeners"
+  listenerFolderName: "SmSAPListeners"
+
+  # ===========================================================================
+  # SAP RFC Connections (outbound to SAP)
+  # ===========================================================================
+  connections:
+    # -------------------------------------------------------------------------
+    # CustomerPrograms_Conn - QA SAP system
+    # -------------------------------------------------------------------------
+    - name: "connNode_CustomerPrograms_Conn"
+      alias: "CustomerPrograms_Conn"
+      enabled: false                                       # Enable when QA SAP is ready
+      appServerHost: "SAPQAS.SMUD.ORG"                     # QA SAP server
+      client: "010"
+      systemId: "QAS"                                      # QA system ID
+      systemNumber: "00"
+      language: "EN"
+      loadBalancing: "Off"
+      messageServerHost: "SAPQAS.SMUD.ORG"
+      logonGroup: "WEB"
+      gatewayHost: ""
+      gatewayService: ""
+      username: "SAP_RFC_USER"
+      secretName: "sapadapter-customerprograms-password"    # Key Vault: test-sapadapter-customerprograms-password
+      passwordEnvVar: "SAP_CUSTOMERPROGRAMS_PASSWORD"
+      sncMode: "No"
+      sncMyName: ""
+      sncPartnerName: ""
+      sncQualityOfService: "Use global build-in default settings"
+      sncAuthentication: "User and Password"
+      connectionType: "No"
+      abapDebug: "Off"
+      rfcTrace: "Off"
+      sapGui: "Off"
+      logTransactionStatus: "Off"
+      storeMsgBody: "Off"
+      repositoryServer: ""
+      programId: ""
+      routerString: ""
+      minPoolSize: 1
+      maxPoolSize: 10
+      poolIncrementSize: 1
+      blockTimeout: 1000
+      expireTimeout: 1000
+      startupRetryCount: 3
+      startupBackoffSecs: 10
+
+    # -------------------------------------------------------------------------
+    # RFCAGENCY_Conn - QA SAP system (load balanced)
+    # -------------------------------------------------------------------------
+    - name: "connNode_RFCAGENCY_Conn"
+      alias: "RFCAGENCY_Conn"
+      enabled: false
+      appServerHost: ""
+      client: "010"
+      systemId: "QAS"
+      systemNumber: ""
+      language: "EN"
+      loadBalancing: "On"
+      messageServerHost: "sapqas.smud.org"
+      logonGroup: "WEB"
+      gatewayHost: ""
+      gatewayService: ""
+      username: "RFCAGENCY"
+      secretName: "sapadapter-rfcagency-password"           # Key Vault: test-sapadapter-rfcagency-password
+      passwordEnvVar: "SAP_RFCAGENCY_PASSWORD"
+      sncMode: "No"
+      sncMyName: ""
+      sncPartnerName: ""
+      sncQualityOfService: "Use global build-in default settings"
+      sncAuthentication: "User and Password"
+      connectionType: "No"
+      abapDebug: "Off"
+      rfcTrace: "Off"
+      sapGui: "Off"
+      logTransactionStatus: "Off"
+      storeMsgBody: "Off"
+      repositoryServer: ""
+      programId: ""
+      routerString: ""
+      minPoolSize: 1
+      maxPoolSize: 10
+      poolIncrementSize: 1
+      blockTimeout: 1000
+      expireTimeout: 1000
+      startupRetryCount: 3
+      startupBackoffSecs: 10
+
+  # ===========================================================================
+  # SAP RFC Listeners (inbound from SAP)
+  # ===========================================================================
+  listeners:
+    - name: "ESB"
+      enabled: false
+      gatewayHost: "sapqas.smud.org"
+      gatewayService: "sapgw00"
+      programId: "ESB"
+      repositoryServer: "RFCWEQ_Conn"
+      threadCount: 5
+      unicode: "yes"
+      sncMode: "Yes"
+      sncMyName: "p:CN=ESBQA, OU=IT, O=SMUD.ORG, C=US"   # QA SNC identity
+      sncQualityOfService: "Use global build-in default settings"
+      rfcTrace: "Off"
+      logTransactionStatus: "On"
+      storeMsgBody: "On"
+      authService: ""
+      retryLimit: 5
+      retryBackoffTimeout: 10
+
+    - name: "ESBCRM"
+      enabled: false
+      gatewayHost: "sapqas.smud.org"
+      gatewayService: "sapgw00"
+      programId: "ESBCRM"
+      repositoryServer: "RFCWEQ_CRM_Conn"
+      threadCount: 5
+      unicode: ""
+      sncMode: "Yes"
+      sncMyName: "p:CN=ESBQA, OU=IT, O=SMUD.ORG, C=US"
+      sncQualityOfService: "Use global build-in default settings"
+      rfcTrace: "Off"
+      logTransactionStatus: "On"
+      storeMsgBody: "On"
+      authService: ""
+      retryLimit: 5
+      retryBackoffTimeout: 10
+
+    - name: "EPAService"
+      enabled: false
+      gatewayHost: "sapqas.smud.org"
+      gatewayService: "sapgw00"
+      programId: "EPAservice"
+      repositoryServer: "RFCWEQ_Conn"
+      threadCount: 5
+      unicode: ""
+      sncMode: "No"
+      sncMyName: ""
+      sncQualityOfService: "Use global build-in default settings"
+      rfcTrace: "Off"
+      logTransactionStatus: "On"
+      storeMsgBody: "On"
+      authService: ""
+      retryLimit: 5
+      retryBackoffTimeout: 10

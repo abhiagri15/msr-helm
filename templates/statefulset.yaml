@@ -20,6 +20,14 @@ spec:
       {{- if and .Values.terracotta.enabled .Values.terracotta.waitForReady }}
       serviceAccountName: {{ include "webmethods-msr.fullname" . }}
       {{- end }}
+      # Pod-level security context - ensures proper file ownership and non-root enforcement
+      # sagadmin user in MSR container has UID=1724, GID=1724
+      securityContext:
+        fsGroup: {{ .Values.securityContext.pod.fsGroup }}
+        runAsUser: {{ .Values.securityContext.pod.runAsUser }}
+        runAsGroup: {{ .Values.securityContext.pod.runAsGroup }}
+        runAsNonRoot: {{ .Values.securityContext.pod.runAsNonRoot }}
+        fsGroupChangePolicy: {{ .Values.securityContext.pod.fsGroupChangePolicy | quote }}
       {{- if .Values.affinity }}
       affinity:
         {{- toYaml .Values.affinity | nindent 8 }}
@@ -53,6 +61,18 @@ spec:
       # ============================================================================
       - name: copy-keyvault-keystores
         image: eclipse-temurin:11-jdk  # Debian-based for better Azure CLI support
+        # Init container must run as root for apt-get install and chown operations
+        # This overrides the pod-level runAsUser/runAsNonRoot settings
+        securityContext:
+          runAsUser: 0
+          runAsNonRoot: false
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - CHOWN       # Required for chown on keystore files
+              - DAC_OVERRIDE # Required for writing to PVC before ownership is set
         command: ['bash', '-c']
         args:
         - |
@@ -192,6 +212,27 @@ spec:
 
           echo "All keystore and truststore operations completed."
           ls -la /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/
+
+          # ========================================================================
+          # Step 5: Copy server.cnf from ConfigMap to PVC (makes it writable)
+          # ========================================================================
+          # ConfigMap mounts are read-only, but MSR/SAP adapter needs to write to server.cnf
+          # Copy the ConfigMap content to the PVC so it becomes writable
+          echo "Copying server.cnf from ConfigMap to writable PVC..."
+          if [ -f "/tmp/server-cnf-configmap/server.cnf" ]; then
+            cp /tmp/server-cnf-configmap/server.cnf /opt/softwareag/IntegrationServer/instances/default/config/server.cnf
+            chmod 644 /opt/softwareag/IntegrationServer/instances/default/config/server.cnf
+            echo "Successfully copied server.cnf to PVC"
+          else
+            echo "WARNING: server.cnf not found in ConfigMap mount!"
+          fi
+
+          # Fix ownership of created files to sagadmin (UID=1724, GID=1724)
+          echo "Setting ownership of created files to sagadmin..."
+          chown -R 1724:1724 /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/ 2>/dev/null || echo "chown failed (may be expected if files don't exist)"
+          chown 1724:1724 /opt/softwareag/IntegrationServer/instances/default/config/server.cnf 2>/dev/null || echo "chown server.cnf failed"
+          ls -la /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/
+          ls -la /opt/softwareag/IntegrationServer/instances/default/config/server.cnf
         volumeMounts:
         - name: keyvault-store
           mountPath: /mnt/secrets-store
@@ -199,10 +240,16 @@ spec:
         - name: msr-data
           mountPath: /opt/softwareag/IntegrationServer/instances/default/config
           subPath: config
+        - name: server-cnf
+          mountPath: /tmp/server-cnf-configmap
+          readOnly: true
       {{- end }}
       {{- if and .Values.terracotta.enabled .Values.terracotta.waitForReady }}
       - name: wait-for-terracotta
         image: bitnami/kubectl:latest
+        # No root needed - only runs kubectl commands
+        securityContext:
+          {{- toYaml .Values.securityContext.container | nindent 10 }}
         command: ['sh', '-c']
         args:
         - |
@@ -242,6 +289,9 @@ spec:
       - name: msr
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        # Container-level security context - restricts MSR container capabilities
+        securityContext:
+          {{- toYaml .Values.securityContext.container | nindent 10 }}
         ports:
         - containerPort: {{ .Values.service.ports.http }}
           name: http
@@ -261,12 +311,30 @@ spec:
           value: "/opt/softwareag/IntegrationServer/application.properties"
         # SAP SNC (Secure Network Communication) environment variables
         # Required for SAP Cryptographic Library to be recognized by WmSAP adapter
+        # USER and LOGNAME are required for sapgenpse seclogin command to work
+        # (Kubernetes does not set these automatically like traditional Linux login shells)
+        - name: USER
+          value: "sagadmin"
+        - name: LOGNAME
+          value: "sagadmin"
         - name: SNC_LIB
-          value: "/opt/softwareag/IntegrationServer/lib/libsapcrypto.so"
+          value: "/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so"
         - name: SECUDIR
-          value: "/opt/softwareag/IntegrationServer/packages/WmSAP/lib/sec"
+          value: "/opt/softwareag/sap/snc/sap_crypto/sec"
         - name: LD_LIBRARY_PATH
-          value: "/opt/softwareag/IntegrationServer/lib:/opt/softwareag/IntegrationServer/packages/WmSAP/lib:/opt/softwareag/common/lib"
+          value: "/opt/softwareag/sap/snc/sap_crypto:/opt/softwareag/IntegrationServer/lib:/opt/softwareag/IntegrationServer/packages/WmSAP/lib:/opt/softwareag/common/lib"
+        {{- if gt (int (.Values.logging.sap.jcoTraceLevel | default 0)) 0 }}
+        # SAP JCo Trace Configuration (set via JCo system properties)
+        # jco.trace_level: 0-10 (0=off, 10=most verbose)
+        # Configurable via values.yaml: logging.sap.jcoTraceLevel
+        - name: JCO_TRACE_LEVEL
+          value: "{{ .Values.logging.sap.jcoTraceLevel }}"
+        - name: JCO_TRACE_PATH
+          value: "{{ .Values.logging.sap.jcoTracePath | default "/opt/softwareag/IntegrationServer/instances/default/logs" }}"
+        # Pass JCo trace settings to JVM
+        - name: JAVA_CUSTOM_OPTS
+          value: "-Djco.trace_level={{ .Values.logging.sap.jcoTraceLevel }} -Djco.trace_path={{ .Values.logging.sap.jcoTracePath | default "/opt/softwareag/IntegrationServer/instances/default/logs" }}"
+        {{- end }}
         {{- if .Values.azureKeyVault.enabled }}
         envFrom:
         {{- if or .Values.jdbc.enabled .Values.jdbcPool.enabled .Values.jdbcAdapter.enabled }}
@@ -287,7 +355,6 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
-        {{- if .Values.sapAdapter.enabled }}
         lifecycle:
           postStart:
             exec:
@@ -295,8 +362,8 @@ spec:
               - /bin/sh
               - -c
               - |
-                # Inject SAP Adapter settings into server.cnf
-                # These settings must be in server.cnf for SAP Adapter to recognize them
+                # PostStart lifecycle hook to configure MSR settings in main server.cnf
+                # This is necessary because the UI reads from the main config, not the instance config
                 SERVER_CNF="/opt/softwareag/IntegrationServer/config/server.cnf"
 
                 # Wait for server.cnf to exist (MSR creates it on startup)
@@ -307,13 +374,62 @@ spec:
                   sleep 2
                 done
 
+                # Update logging level in main server.cnf
+                # This ensures the UI shows the correct logging level
+                if [ -f "$SERVER_CNF" ]; then
+                  # Update watt.debug.level if it exists, otherwise add it
+                  if grep -q "^watt.debug.level=" "$SERVER_CNF" 2>/dev/null; then
+                    sed -i "s/^watt.debug.level=.*/watt.debug.level={{ .Values.logging.level | default "Info" }}/" "$SERVER_CNF"
+                  else
+                    echo "watt.debug.level={{ .Values.logging.level | default "Info" }}" >> "$SERVER_CNF"
+                  fi
+
+                  # Update SAP adapter debug level
+                  if grep -q "^watt.adapter.WmSAP.debuglevel=" "$SERVER_CNF" 2>/dev/null; then
+                    sed -i "s/^watt.adapter.WmSAP.debuglevel=.*/watt.adapter.WmSAP.debuglevel={{ .Values.logging.sap.level | default 4 }}/" "$SERVER_CNF"
+                  else
+                    echo "watt.adapter.WmSAP.debuglevel={{ .Values.logging.sap.level | default 4 }}" >> "$SERVER_CNF"
+                  fi
+                fi
+
+                {{- if and .Values.sapAdapter .Values.sapAdapter.enabled }}
                 # Add watt.sap.snclibpath if not already present
                 if ! grep -q "watt.sap.snclibpath" "$SERVER_CNF" 2>/dev/null; then
                   echo "" >> "$SERVER_CNF"
                   echo "# SAP SNC Library Path (injected by Helm)" >> "$SERVER_CNF"
-                  echo "watt.sap.snclibpath={{ .Values.sapAdapter.sncLibPath | default "/opt/softwareag/IntegrationServer/lib/libsapcrypto.so" }}" >> "$SERVER_CNF"
+                  echo "watt.sap.snclibpath={{ .Values.sapAdapter.sncLibPath | default "/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so" }}" >> "$SERVER_CNF"
                 fi
-        {{- end }}
+                {{- end }}
+
+                {{- if .Values.caching.publicCacheManagers.enabled }}
+                # Copy public cache manager XMLs from read-only ConfigMap to writable Caching directory
+                # Ehcache needs write access to migrate XMLs to 2.8.x format at startup
+                CACHE_DIR="/opt/softwareag/IntegrationServer/config/Caching"
+                if [ -d "/tmp/public-cache-configs" ]; then
+                  for f in /tmp/public-cache-configs/*.xml; do
+                    [ -f "$f" ] && cp "$f" "$CACHE_DIR/" && chmod 644 "$CACHE_DIR/$(basename $f)"
+                  done
+                fi
+
+                # Auto-start public cache managers in background
+                # Waits for IS HTTP endpoint to be fully ready, then starts each via admin DSP
+                (
+                  MAX_WAIT=300
+                  ELAPSED=0
+                  while [ $ELAPSED -lt $MAX_WAIT ]; do
+                    if curl -s -f -o /dev/null http://localhost:5555/ 2>/dev/null; then
+                      sleep 5
+                      {{- $cacheFiles := .Files.Glob "files/config/caching/*.xml" }}
+                      {{- range $path, $content := $cacheFiles }}
+                      curl -s -u {{ $.Values.caching.publicCacheManagers.adminUser }}:{{ $.Values.caching.publicCacheManagers.adminPassword }} -X POST "http://localhost:5555/WmRoot/settings-cache.dsp" -d "cacheManagerName={{ trimSuffix ".xml" (base $path) }}&operation=cache_manager_start" > /dev/null 2>&1 || true
+                      {{- end }}
+                      break
+                    fi
+                    sleep 10
+                    ELAPSED=$((ELAPSED + 10))
+                  done
+                ) &
+                {{- end }}
         {{- if .Values.healthProbes.startup.enabled }}
         startupProbe:
           httpGet:
@@ -357,16 +473,21 @@ spec:
         - name: application-properties
           mountPath: /opt/softwareag/IntegrationServer/application.properties
           subPath: application.properties
+          readOnly: true
+        # server.cnf is copied to PVC by init container (not mounted directly from ConfigMap)
+        # This allows MSR/SAP adapter to write to server.cnf at runtime
         {{- if .Values.terracotta.enabled }}
         - name: terracotta-xml
           mountPath: /opt/softwareag/IntegrationServer/config/Caching/IS_TERRACOTTA_CACHE.xml
           subPath: IS_TERRACOTTA_CACHE.xml
+          readOnly: true
         {{- end }}
         {{- range .Values.keystores }}
         {{- if .fileData }}
         - name: security-stores
           mountPath: {{ .location }}
           subPath: {{ .aliasName }}.{{ .type | lower }}
+          readOnly: true
         {{- end }}
         {{- end }}
         {{- range .Values.truststores }}
@@ -374,6 +495,7 @@ spec:
         - name: security-stores
           mountPath: {{ .location }}
           subPath: {{ .aliasName }}.{{ .type | lower }}
+          readOnly: true
         {{- end }}
         {{- end }}
         {{- if .Values.azureKeyVault.enabled }}
@@ -387,6 +509,7 @@ spec:
         - name: package-configs
           mountPath: /opt/softwareag/IntegrationServer/packages/{{ .name }}/app.properties
           subPath: {{ .name }}-app.properties
+          readOnly: true
         {{- end }}
         {{- end }}
         {{- /* File Access Control configuration for WmPublic package */}}
@@ -394,11 +517,64 @@ spec:
         - name: file-access-control
           mountPath: /opt/softwareag/IntegrationServer/packages/WmPublic/config/fileAccessControl.cnf
           subPath: fileAccessControl.cnf
+          readOnly: true
+        {{- end }}
+        {{- /* Public Cache Managers - mounted to temp dir, copied to writable Caching dir by postStart */}}
+        {{- if .Values.caching.publicCacheManagers.enabled }}
+        - name: public-caches
+          mountPath: /tmp/public-cache-configs
+          readOnly: true
+        {{- end }}
+        {{- /* ACL Map configuration (aclmap_sm.cnf) */}}
+        - name: aclmap-config
+          mountPath: /opt/softwareag/IntegrationServer/instances/default/config/aclmap_sm.cnf
+          subPath: aclmap_sm.cnf
+          readOnly: true
+        {{- /* SAP SNC External Credentials (cred_v2 + PSE from K8s Secret) */}}
+        {{- if and .Values.sapAdapter .Values.sapAdapter.snc .Values.sapAdapter.snc.externalCredentials }}
+        - name: sap-snc-credentials
+          mountPath: /opt/softwareag/sap/snc/sap_crypto/sec
+          readOnly: true
+        {{- end }}
+        {{- /* webMethods Cloud configuration */}}
+        {{- if .Values.webMethodsCloud.enabled }}
+        - name: cloud-config-accounts
+          mountPath: /opt/softwareag/IntegrationServer/config/integrationlive/accounts.cnf
+          subPath: accounts.cnf
+          readOnly: true
+        - name: cloud-config-connections
+          mountPath: /opt/softwareag/IntegrationServer/config/integrationlive/connections.cnf
+          subPath: connections.cnf
+          readOnly: true
+        {{- /* Mount application files from files/integrationlive/applications/ */}}
+        {{- $appFiles := .Files.Glob "files/integrationlive/applications/*.cnf" }}
+        {{- range $path, $content := $appFiles }}
+        - name: cloud-config-apps
+          mountPath: /opt/softwareag/IntegrationServer/config/integrationlive/applications/{{ base $path }}
+          subPath: {{ base $path }}
+          readOnly: true
+        {{- end }}
+        {{- /* Mount inline application files from values */}}
+        {{- range $key, $value := .Values.webMethodsCloud.applicationFiles }}
+        - name: cloud-config-apps
+          mountPath: /opt/softwareag/IntegrationServer/config/integrationlive/applications/{{ $key }}
+          subPath: {{ $key }}
+          readOnly: true
+        {{- end }}
         {{- end }}
       volumes:
       - name: application-properties
         configMap:
           name: {{ include "webmethods-msr.fullname" . }}-config
+          items:
+          - key: application.properties
+            path: application.properties
+      - name: server-cnf
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-config
+          items:
+          - key: server.cnf
+            path: server.cnf
       {{- if .Values.terracotta.enabled }}
       - name: terracotta-xml
         configMap:
@@ -429,6 +605,44 @@ spec:
       - name: file-access-control
         configMap:
           name: {{ include "webmethods-msr.fullname" . }}-file-access-control
+      {{- end }}
+      {{- /* Public Cache Managers volume */}}
+      {{- if .Values.caching.publicCacheManagers.enabled }}
+      - name: public-caches
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-public-caches
+      {{- end }}
+      {{- /* ACL Map configuration volume */}}
+      - name: aclmap-config
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-aclmap
+          items:
+          - key: aclmap_sm.cnf
+            path: aclmap_sm.cnf
+      {{- /* SAP SNC External Credentials volume (cred_v2 + PSE from K8s Secret) */}}
+      {{- if and .Values.sapAdapter .Values.sapAdapter.snc .Values.sapAdapter.snc.externalCredentials }}
+      - name: sap-snc-credentials
+        secret:
+          secretName: {{ .Values.sapAdapter.snc.secretName | default "sap-snc-credentials" }}
+          defaultMode: 0440
+      {{- end }}
+      {{- /* webMethods Cloud configuration volumes */}}
+      {{- if .Values.webMethodsCloud.enabled }}
+      - name: cloud-config-accounts
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-cloud-config
+          items:
+          - key: accounts.cnf
+            path: accounts.cnf
+      - name: cloud-config-connections
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-cloud-config
+          items:
+          - key: connections.cnf
+            path: connections.cnf
+      - name: cloud-config-apps
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-cloud-config
       {{- end }}
   {{- if .Values.persistence.enabled }}
   volumeClaimTemplates:

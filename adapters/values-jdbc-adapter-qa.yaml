@@ -1,0 +1,53 @@
+# ============================================================================
+# JDBC ADAPTER Configuration - QA Environment
+# ============================================================================
+# This file contains JDBC Adapter connection configurations for WmJDBCAdapter.
+# These connections are used by business integration services.
+#
+# Usage:
+#   helm upgrade --install wm-msr ./msr-helm \
+#     -f values-qa.yaml \
+#     -f adapters/values-jdbc-adapter-qa.yaml \
+#     -f adapters/values-sap-adapter-qa.yaml \
+#     -n webmethods-qa
+#
+# Configuration approach:
+#   - username: Stored in values file (not sensitive)
+#   - password: Retrieved from Azure Key Vault via secretName
+#   - Other connection details: Stored in values file
+#
+# Password stored in Azure Key Vault: test-jdbcadapter-<connection>-password
+# ============================================================================
+
+jdbcAdapter:
+  enabled: true
+  connections:
+    # -------------------------------------------------------------------------
+    # Primary Azure SQL Database Connection (QA)
+    # -------------------------------------------------------------------------
+    - name: "mssql_db_connection"
+      description: "Azure SQL Database Connection for Integration Services (QA)"
+      packageName: "AbTest"
+      folderName: "AbTest"
+      connectionType: "JDBC Adapter Connection"
+      connectionFactoryInterface: "com.wm.adapter.wmjdbc.JDBCConnectionFactory"
+      driverAlias: "Microsoft SQL Server Driver"
+      dataSourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
+      # Connection details
+      serverName: "wm-sql-abi-qa.database.windows.net"
+      databaseName: "isinternal"
+      portNumber: 1433
+      networkProtocol: "tcp"
+      username: "wmadmin"
+      secretName: "jdbcadapter-mssql-password"         # Key Vault: test-jdbcadapter-mssql-password
+      passwordEnvVar: "JDBC_ADAPTER_MSSQL_PASSWORD"
+      otherProperties: "encrypt=true;trustServerCertificate=true;loginTimeout=30"
+      transactionType: "LOCAL_TRANSACTION"
+      # Connection pool settings (QA sizing)
+      minPoolSize: 2
+      maxPoolSize: 20
+      poolIncrementSize: 2
+      blockTimeout: 2000
+      expireTimeout: 2000
+      startupRetryCount: 3
+      startupBackoffSecs: 10

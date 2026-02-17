@@ -1,0 +1,179 @@
+# ============================================================================
+# SAP ADAPTER Configuration - Production Environment
+# ============================================================================
+# Usage:
+#   helm upgrade --install wm-msr ./msr-helm \
+#     -f values-prod.yaml \
+#     -f adapters/values-sap-adapter-prod.yaml \
+#     -n webmethods-prod
+#
+# SNC Credentials:
+#   cred_v2 and PSE files are stored in Azure Key Vault (base64 encoded)
+#   and mounted as a K8s Secret by the deployment pipeline.
+#   Key Vault secrets: prod-sap-snc-credv2, prod-sap-snc-pse
+#
+# Passwords in Azure Key Vault:
+#   prod-sapadapter-customerprograms-password
+#   prod-sapadapter-rfcagency-password
+# ============================================================================
+
+sapAdapter:
+  enabled: true
+
+  # SAP SNC Library Path
+  sncLibPath: "/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so"
+
+  # SAP SNC External Credentials (mounted from K8s Secret instead of baked-in)
+  snc:
+    externalCredentials: true
+    secretName: "sap-snc-credentials"
+    pseFileName: "snc.pse"
+
+  connectionPackageName: "SmSAPConn"
+  connectionFolderName: "SmSAPConn"
+  listenerPackageName: "SmSAPListeners"
+  listenerFolderName: "SmSAPListeners"
+
+  # ===========================================================================
+  # SAP RFC Connections (outbound to SAP)
+  # ===========================================================================
+  connections:
+    # -------------------------------------------------------------------------
+    # CustomerPrograms_Conn - Production SAP PRD system
+    # -------------------------------------------------------------------------
+    - name: "connNode_CustomerPrograms_Conn"
+      alias: "CustomerPrograms_Conn"
+      enabled: true
+      appServerHost: "SAPPRD.SMUD.ORG"
+      client: "010"
+      systemId: "PRD"
+      systemNumber: "00"
+      language: "EN"
+      loadBalancing: "Off"
+      messageServerHost: "SAPPRD.SMUD.ORG"
+      logonGroup: "WEB"
+      gatewayHost: ""
+      gatewayService: ""
+      username: "SAP_RFC_USER"
+      secretName: "sapadapter-customerprograms-password"    # Key Vault: prod-sapadapter-customerprograms-password
+      passwordEnvVar: "SAP_CUSTOMERPROGRAMS_PASSWORD"
+      sncMode: "Yes"                                        # SNC enabled for Production
+      sncMyName: "p:CN=ESBPROD, OU=IT, O=SMUD.ORG, C=US"
+      sncPartnerName: ""
+      sncQualityOfService: "Use global build-in default settings"
+      sncAuthentication: "User and Password"
+      connectionType: "No"
+      abapDebug: "Off"
+      rfcTrace: "Off"
+      sapGui: "Off"
+      logTransactionStatus: "Off"
+      storeMsgBody: "Off"
+      repositoryServer: ""
+      programId: ""
+      routerString: ""
+      minPoolSize: 2
+      maxPoolSize: 20
+      poolIncrementSize: 2
+      blockTimeout: 2000
+      expireTimeout: 2000
+      startupRetryCount: 5
+      startupBackoffSecs: 15
+
+    # -------------------------------------------------------------------------
+    # RFCAGENCY_Conn - Production SAP PRD system (load balanced)
+    # -------------------------------------------------------------------------
+    - name: "connNode_RFCAGENCY_Conn"
+      alias: "RFCAGENCY_Conn"
+      enabled: true
+      appServerHost: ""
+      client: "010"
+      systemId: "PRD"
+      systemNumber: ""
+      language: "EN"
+      loadBalancing: "On"
+      messageServerHost: "sapprd.smud.org"
+      logonGroup: "WEB"
+      gatewayHost: ""
+      gatewayService: ""
+      username: "RFCAGENCY"
+      secretName: "sapadapter-rfcagency-password"           # Key Vault: prod-sapadapter-rfcagency-password
+      passwordEnvVar: "SAP_RFCAGENCY_PASSWORD"
+      sncMode: "Yes"
+      sncMyName: "p:CN=ESBPROD, OU=IT, O=SMUD.ORG, C=US"
+      sncPartnerName: ""
+      sncQualityOfService: "Use global build-in default settings"
+      sncAuthentication: "User and Password"
+      connectionType: "No"
+      abapDebug: "Off"
+      rfcTrace: "Off"
+      sapGui: "Off"
+      logTransactionStatus: "Off"
+      storeMsgBody: "Off"
+      repositoryServer: ""
+      programId: ""
+      routerString: ""
+      minPoolSize: 2
+      maxPoolSize: 20
+      poolIncrementSize: 2
+      blockTimeout: 2000
+      expireTimeout: 2000
+      startupRetryCount: 5
+      startupBackoffSecs: 15
+
+  # ===========================================================================
+  # SAP RFC Listeners (inbound from SAP)
+  # ===========================================================================
+  listeners:
+    - name: "ESB"
+      enabled: true
+      gatewayHost: "sapprd.smud.org"
+      gatewayService: "sapgw00"
+      programId: "ESB"
+      repositoryServer: "RFCWEQ_Conn"
+      threadCount: 10                                      # Higher thread count for Prod
+      unicode: "yes"
+      sncMode: "Yes"
+      sncMyName: "p:CN=ESBPROD, OU=IT, O=SMUD.ORG, C=US"
+      sncQualityOfService: "Use global build-in default settings"
+      rfcTrace: "Off"
+      logTransactionStatus: "On"
+      storeMsgBody: "On"
+      authService: ""
+      retryLimit: 10
+      retryBackoffTimeout: 15
+
+    - name: "ESBCRM"
+      enabled: true
+      gatewayHost: "sapcp1.smud.org"
+      gatewayService: "sapgw00"
+      programId: "ESBCRM"
+      repositoryServer: "RFCWEQ_CRM_Conn"
+      threadCount: 10
+      unicode: ""
+      sncMode: "Yes"
+      sncMyName: "p:CN=ESBPROD, OU=IT, O=SMUD.ORG, C=US"
+      sncQualityOfService: "Use global build-in default settings"
+      rfcTrace: "Off"
+      logTransactionStatus: "On"
+      storeMsgBody: "On"
+      authService: ""
+      retryLimit: 10
+      retryBackoffTimeout: 15
+
+    - name: "EPAService"
+      enabled: true
+      gatewayHost: "sapprd.smud.org"
+      gatewayService: "sapgw00"
+      programId: "EPAservice"
+      repositoryServer: "RFCWEQ_Conn"
+      threadCount: 10
+      unicode: ""
+      sncMode: "No"
+      sncMyName: ""
+      sncQualityOfService: "Use global build-in default settings"
+      rfcTrace: "Off"
+      logTransactionStatus: "On"
+      storeMsgBody: "On"
+      authService: ""
+      retryLimit: 10
+      retryBackoffTimeout: 15
