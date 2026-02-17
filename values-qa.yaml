@@ -1,0 +1,292 @@
+# QA/Test Environment Configuration
+# 3-node cluster with moderate resources
+
+global:
+  namespace: webmethods-qa
+
+replicaCount: 3
+
+image:
+  repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
+  tag: "11.1.0.6-qa"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    http: 5555
+    https: 5543
+    diagnostic: 9999
+
+# Resources for QA (moderate)
+resources:
+  requests:
+    memory: "2Gi"
+    cpu: "1000m"
+  limits:
+    memory: "2Gi"
+    cpu: "2000m"
+
+# JVM memory for QA
+jvm:
+  minMemory: "1024m"
+  maxMemory: "1536m"
+
+# ============================================================================
+# Security Context - QA Environment
+# ============================================================================
+# Uses sagadmin (UID=1724) as standard non-root identity per IBM/SoftwareAG best practices.
+# Init container (copy-keyvault-keystores) runs as root with minimal capabilities.
+# readOnlyRootFilesystem is NOT enabled - postStart hooks write to container root FS.
+# ============================================================================
+securityContext:
+  pod:
+    fsGroup: 1724
+    runAsUser: 1724
+    runAsGroup: 1724
+    runAsNonRoot: true
+    fsGroupChangePolicy: "OnRootMismatch"
+  container:
+    runAsUser: 1724
+    runAsGroup: 1724
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: "default"
+  accessMode: ReadWriteOnce
+  size: 5Gi
+
+# ============================================================================
+# JDBC POOL Configuration (MSR Internal Database for ISInternal, Xref, etc.)
+# ============================================================================
+# JDBC Pools are used by MSR internal functions like ISInternal, ISDashboardStats, Xref
+# Credentials stored in Azure Key Vault: test-jdbc-pool-url, test-jdbc-pool-username, test-jdbc-pool-password
+# Pool sizing configuration is environment-specific and non-sensitive
+jdbcPool:
+  enabled: true
+  pool:
+    name: "IS-Pool"
+    driverAlias: "DataDirect Connect JDBC SQL Server Driver"
+    dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
+    minConns: 2
+    maxConns: 150
+    poolThreshold: 10
+    waitingThread: 75
+    expireTime: 60000
+    useSSL: false
+  functionalAliases:
+    - name: "ISInternal"
+      connPoolAlias: "IS-Pool"
+      failFastMode: true
+    - name: "ISDashboardStats"
+      connPoolAlias: "IS-Pool"
+      failFastMode: false
+    - name: "Xref"
+      connPoolAlias: "IS-Pool"
+      failFastMode: true
+
+# ============================================================================
+# JDBC ADAPTER Configuration (WmJDBCAdapter for Integration Services)
+# ============================================================================
+# JDBC Adapter connections are used by business integration services
+# Azure SQL Database: wm-sql-abi-qa.database.windows.net
+# Credentials stored in Azure Key Vault: test-jdbc-adapter-url, test-jdbc-adapter-username, test-jdbc-adapter-password
+# Each connection can have different pool sizing and transaction settings
+jdbcAdapter:
+  enabled: true
+  connections:
+    - name: "mssql_db_connection"
+      description: "Azure SQL Database Connection for Integration Services (QA)"
+      packageName: "AbTest"
+      folderName: "AbTest"
+      connectionType: "JDBC Adapter Connection"
+      connectionFactoryInterface: "com.wm.adapter.wmjdbc.JDBCConnectionFactory"
+      driverAlias: "Microsoft SQL Server Driver"
+      dataSourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
+      # Azure SQL Database connection details - credentials from Azure Key Vault
+      serverName: "wm-sql-abi-qa.database.windows.net"
+      databaseName: "isinternal"
+      portNumber: 1433
+      networkProtocol: "tcp"
+      user: "$env{JDBC_ADAPTER_USERNAME}"
+      password: "$env{JDBC_ADAPTER_PASSWORD}"
+      otherProperties: "encrypt=true;trustServerCertificate=true;loginTimeout=30"
+      transactionType: "LOCAL_TRANSACTION"
+      # Connection pool settings
+      minPoolSize: 2
+      maxPoolSize: 20
+      poolIncrementSize: 2
+      blockTimeout: 2000
+      expireTimeout: 2000
+      startupRetryCount: 3
+      startupBackoffSecs: 10
+
+# High availability with pod anti-affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app: wm-msr
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Health Probes (standard for QA)
+healthProbes:
+  startup:
+    enabled: true
+    path: /
+    port: 5555
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+  liveness:
+    enabled: true
+    path: /
+    port: 5555
+    initialDelaySeconds: 180
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    path: /
+    port: 5555
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Universal Messaging Configuration
+# Passwords stored in Azure Key Vault: test-um-business-password, test-um-logs-password
+um:
+  enabled: true
+  connections:
+    # Business UM Connection (Active-Passive Cluster)
+    - connectionAlias: "IS_UM_BUSINESS"
+      connectionEnabled: true
+      url: "nsp://um-business.webmethods-qa.svc.cluster.local:9000"
+      user: "Administrator"
+      useCSQ: "true"
+      csqSize: "-1"
+      csqDrainInOrder: "true"
+      secretName: "um-business-password"
+      passwordEnvVar: "UM_BUSINESS_PASSWORD"
+    # Logs UM Connection (Active-Active Cluster - Combined Service)
+    - connectionAlias: "IS_UM_LOGS"
+      connectionEnabled: true
+      url: "nsp://um-logs-combined.webmethods-qa.svc.cluster.local:9000"
+      user: "Administrator"
+      useCSQ: "true"
+      csqSize: "-1"
+      csqDrainInOrder: "true"
+      secretName: "um-logs-password"
+      passwordEnvVar: "UM_LOGS_PASSWORD"
+
+# Terracotta Cache Manager Configuration
+terracotta:
+  enabled: true
+  cacheManagerName: "IS_TERRACOTTA_CACHE"
+  urls:
+    - "terracotta-0.terracotta-service.webmethods-qa.svc.cluster.local:9510"
+    - "terracotta-1.terracotta-service.webmethods-qa.svc.cluster.local:9510"
+  # Only 2 Terracotta servers are deployed, matching StatefulSet replicas
+
+# Keystore Configuration (example - no actual files mounted)
+keystores: []
+
+# Truststore Configuration (example - no actual files mounted)
+truststores: []
+
+# Autoscaling Configuration
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ============================================================================
+# Azure Key Vault Integration
+# ============================================================================
+# Store certificates in Azure Key Vault for centralized management
+# All secrets use the "test" prefix for QA environment
+# ============================================================================
+azureKeyVault:
+  enabled: true
+  vaultName: "wM-kv"
+  tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
+  clientId: "e3a6ce1d-19be-4cf0-ba22-de159adb0535"  # AKS Key Vault CSI provider identity Client ID
+  mountPath: "/mnt/secrets-store"
+
+  # Environment-specific prefix for secret names in Azure Key Vault
+  # Secrets will be retrieved as: {secretKeyPrefix}-{secretName}
+  # Example: test-jdbc-pool-password, test-keystore-password, test-um-password
+  secretKeyPrefix: "test"
+
+  # KEYSTORE Certificates (Certificate + Private Key)
+  # These certificates represent YOUR server's identity
+  # Upload to Azure Key Vault as Certificate with private key (PKCS12/PFX)
+  # Passwords stored in Azure Key Vault: test-keystore-password, test-keyalias-password
+  certificates:
+    - certName: "wm-cer"
+      fileName: "wm_keystore.p12"
+      keystoreConfig:
+        aliasName: "WM_KEYSTORE"
+        description: "webMethods Keystore from Azure Key Vault (QA)"
+        type: "PKCS12"
+        provider: "SUN"
+        # Password injected via environment variable from Azure Key Vault
+        isHsm: false
+        keys:
+          - keyAliasName: "wm-cer"
+            # Key alias password injected via environment variable from Azure Key Vault
+
+  # Additional secrets can be stored here (not commonly used)
+  secrets: []
+
+# ============================================================================
+# TRUSTSTORE Configuration
+# ============================================================================
+# Truststore contains trusted certificates (CA certs, partner certs)
+# Each certificate should be uploaded to Azure Key Vault as Certificate object
+# WITHOUT private key (just the .crt file)
+# Certificate names in Key Vault are prefixed with secretKeyPrefix: test-truststore-root-ca, etc.
+# ============================================================================
+truststoreCertificates:
+  enabled: true
+  fileName: "wm_truststore.p12"
+  aliasName: "WM_TRUSTSTORE"
+  description: "webMethods Truststore from Azure Key Vault (QA)"
+  type: "PKCS12"
+  provider: "SUN"
+  # Password stored in Azure Key Vault: test-truststore-password
+  # Password injected via environment variable from Azure Key Vault
+
+  # List of trusted certificates to include in truststore
+  # Each certificate must exist in Azure Key Vault (Secrets section as PEM files)
+  # These certificates are public certificates only (no private keys)
+  certificates:
+    - certName: "truststore-root-ca"          # Root CA certificate (Key Vault: test-truststore-root-ca)
+      alias: "root-ca"                        # Alias in PKCS12 truststore
+    - certName: "truststore-intermediate-ca"  # Intermediate CA certificate (Key Vault: test-truststore-intermediate-ca)
+      alias: "intermediate-ca"
+    - certName: "truststore-partner-cert"     # Partner's public certificate (Key Vault: test-truststore-partner-cert)
+      alias: "partner-cert"
+    - certName: "truststore-payment-gateway"  # Payment Gateway partner certificate (Key Vault: test-truststore-payment-gateway)
+      alias: "payment-gateway"
+    - certName: "truststore-banking-partner"  # Banking partner certificate (Key Vault: test-truststore-banking-partner)
+      alias: "banking-partner"

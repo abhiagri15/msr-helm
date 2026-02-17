@@ -8,11 +8,13 @@
 4. [Azure Key Vault Configuration](#azure-key-vault-configuration)
 5. [Container Registry Setup](#container-registry-setup)
 6. [Helm Chart Deployment](#helm-chart-deployment)
-7. [Environment-Specific Deployments](#environment-specific-deployments)
-8. [Integration Configuration](#integration-configuration)
-9. [Troubleshooting](#troubleshooting)
-10. [Upgrade Procedures](#upgrade-procedures)
-11. [Backup and Recovery](#backup-and-recovery)
+7. [Security Context Configuration](#security-context-configuration)
+8. [Caching Configuration](#caching-configuration)
+9. [Environment-Specific Deployments](#environment-specific-deployments)
+10. [Integration Configuration](#integration-configuration)
+11. [Troubleshooting](#troubleshooting)
+12. [Upgrade Procedures](#upgrade-procedures)
+13. [Backup and Recovery](#backup-and-recovery)
 
 ---
 
@@ -445,6 +447,207 @@ kubectl get configmap -n webmethods
 # Describe pod for events
 kubectl describe pod wm-msr-0 -n webmethods
 ```
+
+---
+
+## Security Context Configuration
+
+### Overview
+
+The Helm chart implements container security hardening following IBM/SoftwareAG best practices for webMethods containers. All MSR containers run as the `sagadmin` user (UID=1724, GID=1724), the standard non-root identity for SoftwareAG products.
+
+### Security Context Values
+
+The security context is configured in `values.yaml` and can be overridden per environment:
+
+```yaml
+securityContext:
+  # Pod-level security context
+  pod:
+    fsGroup: 1724                       # sagadmin group - ensures PVC files are group-accessible
+    runAsUser: 1724                     # sagadmin user
+    runAsGroup: 1724                    # sagadmin group
+    runAsNonRoot: true                  # Prevent running as root
+    fsGroupChangePolicy: "OnRootMismatch"  # Performance: only change ownership if mismatch
+  # Container-level security context (applied to MSR container)
+  container:
+    runAsUser: 1724
+    runAsGroup: 1724
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false     # Prevent privilege escalation
+    capabilities:
+      drop:
+        - ALL                           # Drop all Linux capabilities
+```
+
+### What Each Setting Does
+
+| Setting | Scope | Purpose |
+|---------|-------|---------|
+| `fsGroup: 1724` | Pod | Ensures all PVC-mounted files are group-owned by sagadmin |
+| `runAsUser: 1724` | Pod + Container | Runs all processes as sagadmin (UID 1724) |
+| `runAsGroup: 1724` | Pod + Container | Runs all processes under sagadmin group (GID 1724) |
+| `runAsNonRoot: true` | Pod + Container | Kubernetes rejects the pod if the image tries to run as root |
+| `fsGroupChangePolicy: OnRootMismatch` | Pod | Only re-chowns PVC files when ownership doesn't match (faster restarts) |
+| `allowPrivilegeEscalation: false` | Container | Prevents setuid/setgid binaries from gaining elevated privileges |
+| `capabilities.drop: [ALL]` | Container | Drops all Linux kernel capabilities (NET_RAW, SYS_ADMIN, etc.) |
+
+### Init Container Security
+
+The `copy-keyvault-keystores` init container requires root access for `apt-get install` and `chown` operations. It runs with an explicit security override with minimal capabilities:
+
+```yaml
+securityContext:
+  runAsUser: 0                    # Root required for apt-get and chown
+  runAsNonRoot: false
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+    add:
+      - CHOWN                    # Required for chown command
+      - DAC_OVERRIDE             # Required to read/write files as root
+```
+
+The `wait-for-terracotta` init container uses the same restricted security context as the MSR container (sagadmin, no capabilities).
+
+### Read-Only Volume Mounts
+
+All ConfigMap and Secret volume mounts are set to `readOnly: true` to prevent accidental or malicious modification:
+
+| Volume | Type | readOnly |
+|--------|------|----------|
+| application-properties | ConfigMap | Yes |
+| terracotta-xml | ConfigMap | Yes |
+| security-stores (keystores) | Secret | Yes |
+| security-stores (truststores) | Secret | Yes |
+| keyvault-store | CSI | Yes |
+| package-configs | ConfigMap | Yes |
+| file-access-control | ConfigMap | Yes |
+| public-caches | ConfigMap | Yes |
+| aclmap-config | ConfigMap | Yes |
+| cloud-config-* | ConfigMap | Yes |
+| msr-data (PVC) | PVC | **No** (MSR writes packages, logs, config) |
+| kv-keystores (emptyDir) | emptyDir | **No** (init container writes converted keystores) |
+
+### Why readOnlyRootFilesystem Is NOT Enabled
+
+The MSR container's `readOnlyRootFilesystem` is intentionally **not** enabled because the `postStart` lifecycle hook needs write access to:
+
+1. `/opt/softwareag/IntegrationServer/config/server.cnf` — Terracotta cache manager configuration injected at startup
+2. `/opt/softwareag/IntegrationServer/config/Caching/*.xml` — Public cache manager XML files copied from the read-only ConfigMap mount
+
+To enable `readOnlyRootFilesystem`, you would need to refactor these paths to use `emptyDir` volumes instead.
+
+### Verifying Security Context
+
+```bash
+# Check pod security context
+kubectl get pod wm-msr-0 -n webmethods -o jsonpath='{.spec.securityContext}' | jq .
+
+# Check container security context
+kubectl get pod wm-msr-0 -n webmethods -o jsonpath='{.spec.containers[0].securityContext}' | jq .
+
+# Verify the MSR process runs as sagadmin (UID 1724)
+kubectl exec wm-msr-0 -n webmethods -c msr -- id
+# Expected output: uid=1724(sagadmin) gid=1724(sagadmin) groups=1724(sagadmin)
+
+# Verify no capabilities are granted
+kubectl exec wm-msr-0 -n webmethods -c msr -- sh -c "cat /proc/1/status | grep Cap"
+```
+
+---
+
+## Caching Configuration
+
+### Overview
+
+The MSR Helm chart supports two types of caching:
+
+1. **Public Cache Managers** — In-memory Ehcache instances loaded from XML configuration files
+2. **Terracotta Cache Manager** — Distributed caching via Terracotta BigMemory for session clustering
+
+### Public Cache Managers (Ehcache)
+
+Public cache managers provide in-memory caching within each MSR pod. Cache XML files are placed in `files/config/caching/` and auto-discovered by the Helm chart.
+
+#### Step 1: Create Cache XML Files
+
+Place Ehcache 2.x XML files in `files/config/caching/`:
+
+```xml
+<!-- files/config/caching/OrderCache.xml -->
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
+         name="OrderCacheManager"
+         updateCheck="false">
+    <cache name="ActiveOrders"
+           maxEntriesLocalHeap="5000"
+           timeToLiveSeconds="3600"
+           timeToIdleSeconds="1800"
+           memoryStoreEvictionPolicy="LRU"/>
+</ehcache>
+```
+
+**Important:** The `name` attribute on the `<ehcache>` element becomes the cache manager name in MSR. This is the name displayed in the Integration Server admin console.
+
+#### Step 2: Enable in Values
+
+```yaml
+caching:
+  publicCacheManagers:
+    enabled: true
+    adminUser: "Administrator"      # MSR admin user for auto-start
+    adminPassword: "manage"         # MSR admin password for auto-start
+```
+
+#### Step 3: How It Works
+
+1. **ConfigMap**: All XML files in `files/config/caching/` are packaged into a ConfigMap
+2. **Volume Mount**: ConfigMap is mounted read-only at `/tmp/caching-configs/`
+3. **postStart Hook**: Copies XML files from `/tmp/caching-configs/` to `/opt/softwareag/IntegrationServer/config/Caching/` (writable root filesystem)
+4. **Auto-Start**: Background process in postStart hook waits for MSR to be healthy, then calls the DSP admin endpoint to start each cache manager
+
+#### Step 4: Verify Cache Managers
+
+```bash
+# Check postStart hook output in MSR logs
+kubectl logs wm-msr-0 -n webmethods -c msr | grep -i "cache"
+
+# Access admin console to verify cache managers are running
+kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
+# Open: http://localhost:5555/WmRoot/settings-cache.dsp
+# All cache managers should show "Shutdown" links (meaning they are started)
+```
+
+#### Adding New Cache Managers
+
+1. Create a new XML file in `files/config/caching/` (e.g., `CustomerCache.xml`)
+2. Run `helm upgrade` — the new file is automatically included in the ConfigMap
+3. The postStart hook discovers and starts it on the next pod restart
+
+#### Cache XML Requirements
+
+- Must be valid Ehcache 2.x format (MSR 11.x uses Ehcache 2.8.x internally)
+- The `<ehcache name="...">` attribute defines the cache manager name
+- Each XML file defines one cache manager (can contain multiple `<cache>` elements)
+- Do NOT use Ehcache 3.x format — MSR 11.x does not support it
+
+### Terracotta Distributed Caching
+
+Terracotta provides distributed caching for session clustering across MSR pods.
+
+```yaml
+terracotta:
+  enabled: true
+  cacheManagerName: "IS_TERRACOTTA_CACHE"
+  urls:
+    - "terracotta-0.terracotta.webmethods.svc.cluster.local:9510"
+    - "terracotta-1.terracotta.webmethods.svc.cluster.local:9510"
+  waitForReady: true  # Init container waits for Terracotta before MSR starts
+```
+
+When `waitForReady: true`, an init container polls each Terracotta URL until all are accessible, preventing MSR startup failures due to Terracotta unavailability.
 
 ---
 
@@ -1091,5 +1294,5 @@ packageConfigs:
 
 ---
 
-*Document Version: 2.3.0*
-*Last Updated: January 2026*
+*Document Version: 2.4.0*
+*Last Updated: February 2026*

@@ -4,8 +4,8 @@
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 2.3.0 |
-| Last Updated | January 2026 |
+| Version | 2.4.0 |
+| Last Updated | February 2026 |
 | Author | webMethods Platform Team |
 | Classification | Internal |
 
@@ -222,27 +222,38 @@ Each MSR pod consists of:
 ```
 msr-helm/
 ├── README.md               # Quick start guide
-├── Chart.yaml              # Chart metadata
-├── values.yaml             # Default configuration
-├── values-dev.yaml         # Development environment (core MSR config)
-├── values-qa.yaml          # QA environment
-├── values-prod.yaml        # Production environment
+├── Chart.yaml              # Chart metadata (v2.4.0)
+├── values.yaml             # Default configuration (security context, caching, etc.)
+├── values-dev.yaml         # Development environment overrides
+├── values-qa.yaml          # QA environment overrides
+├── values-prod.yaml        # Production environment overrides
 ├── adapters/               # Adapter configurations (separated for maintainability)
 │   ├── values-jdbc-adapter-dev.yaml   # JDBC connections for dev
 │   ├── values-jdbc-adapter-prod.yaml  # JDBC connections for prod
 │   ├── values-sap-adapter-dev.yaml    # SAP connections/listeners for dev
 │   └── values-sap-adapter-prod.yaml   # SAP connections/listeners for prod
+├── files/                  # Static files mounted into MSR container
+│   └── config/
+│       ├── aclmap_sm.cnf              # ACL map configuration
+│       └── caching/                   # Public Cache Manager Ehcache XMLs
+│           ├── OrderCache.xml         # ActiveOrders, OrderHistory
+│           ├── SessionCache.xml       # UserSessions, AuthTokens
+│           └── LookupCache.xml        # CountryCodes, CurrencyRates, ProductCatalog
 ├── docs/                   # Documentation
 │   ├── ARCHITECTURE.md     # This document
-│   └── IMPLEMENTATION.md   # Deployment guides
+│   ├── IMPLEMENTATION.md   # Deployment guides
+│   └── ADDING-JDBC-CONNECTIONS.md  # JDBC adapter guide
 └── templates/
     ├── _helpers.tpl        # Template helpers
-    ├── statefulset.yaml    # MSR StatefulSet
+    ├── statefulset.yaml    # MSR StatefulSet (security contexts, init containers)
     ├── service.yaml        # Kubernetes Service
-    ├── configmap.yaml      # Application configuration
-    ├── secretproviderclass.yaml  # Azure Key Vault integration
+    ├── configmap.yaml      # Application config, cache configs, ACL map
+    ├── secrets.yaml        # JDBC/security secrets
+    ├── secretproviderclass.yaml  # Azure Key Vault CSI integration
     ├── hpa.yaml            # Horizontal Pod Autoscaler
-    └── serviceaccount.yaml # RBAC configuration
+    ├── serviceaccount.yaml # RBAC configuration
+    ├── package-configs.yaml       # Package-specific app.properties
+    └── webmethods-cloud-configmap.yaml  # webMethods Cloud config
 ```
 
 **Note:** Adapter configurations are separated into the `adapters/` folder to improve maintainability when dealing with many JDBC or SAP connections. This allows different teams to manage adapter configs independently.
@@ -415,11 +426,21 @@ Cost: ~$5,000/month
 │  │ • Azure Key Vault managed certificates                     │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                                                  │
-│  Layer 5: Application Security                                   │
+│  Layer 5: Container Security                                     │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ • Pod: runAsUser=1724 (sagadmin), runAsNonRoot=true       │  │
+│  │ • Container: capabilities.drop=[ALL], no privilege escal. │  │
+│  │ • Init: root with minimal caps (CHOWN, DAC_OVERRIDE only) │  │
+│  │ • ConfigMap/Secret mounts: readOnly=true                   │  │
+│  │ • PVC: fsGroup=1724, fsGroupChangePolicy=OnRootMismatch   │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  Layer 6: Application Security                                   │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │ • MSR ACL-based access control                             │  │
 │  │ • Service-level authentication                             │  │
 │  │ • Audit logging                                            │  │
+│  │ • File Access Control (pub.file service paths)             │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -479,11 +500,25 @@ Cost: ~$5,000/month
 
 ### 5.3 Environment Secret Naming Convention
 
+**Only passwords are stored in Azure Key Vault.** Non-sensitive configuration (URLs, usernames, server names) are stored directly in values files.
+
 | Environment | Prefix | Key Vault | Example Secret |
 |-------------|--------|-----------|----------------|
-| Development | `dev-` | wM-kv | `dev-jdbc-pool-password` |
-| QA/Test | `test-` | wM-kv | `test-jdbc-pool-password` |
-| Production | `prod-` | wM-kv-prod | `prod-jdbc-pool-password` |
+| Development | `dev-` | wM-kv | `dev-jdbcpool-ispool-password` |
+| QA/Test | `test-` | wM-kv | `test-jdbcpool-ispool-password` |
+| Production | `prod-` | wM-kv-prod | `prod-jdbcpool-ispool-password` |
+
+### 5.4 Secret Naming Conventions by Component
+
+| Component | Pattern | Example Key Vault Secret |
+|-----------|---------|--------------------------|
+| JDBC Pool | `{prefix}-jdbcpool-{poolname}-password` | `dev-jdbcpool-ispool-password` |
+| JDBC Adapter | `{prefix}-jdbcadapter-{connection}-password` | `dev-jdbcadapter-mssql-password` |
+| SAP Adapter | `{prefix}-sapadapter-{alias}-password` | `dev-sapadapter-rfcagency-password` |
+| Keystore | `{prefix}-keystore-password` | `dev-keystore-password` |
+| Truststore | `{prefix}-truststore-password` | `dev-truststore-password` |
+| UM Connection | `{prefix}-um-{alias}-password` | `dev-um-business-password` |
+| webMethods Cloud | `{prefix}-wmcloud-{account}-password` | `dev-wmcloud-dev-io-password` |
 
 ---
 
@@ -876,6 +911,9 @@ msr-helm/
 | HPA Enabled | Yes | Yes | Yes |
 | PDB Enabled | Yes | Yes | Yes |
 | Key Vault | wM-kv | wM-kv | wM-kv-prod |
+| runAsNonRoot | true | true | true |
+| allowPrivilegeEscalation | false | false | false |
+| capabilities.drop | ALL | ALL | ALL |
 
 ### 12.3 Deployment Commands
 
@@ -923,6 +961,9 @@ helm upgrade --install wm-msr ./msr-helm \
 | Separate SAP conn/listener packages | Different IS packages for connections vs listeners | Jan 2026 |
 | File access control via ConfigMap | Security for pub.file services, environment-specific paths | Jan 2026 |
 | Package-specific app.properties | Environment-specific configuration per package | Jan 2026 |
+| Container security hardening (sagadmin UID 1724) | IBM/SoftwareAG best practice, non-root, drop all caps | Feb 2026 |
+| Read-only ConfigMap/Secret mounts | Prevent accidental modification of mounted configs | Feb 2026 |
+| Public cache managers (Ehcache XML) | In-memory caching with auto-discovery and auto-start | Feb 2026 |
 
 ---
 

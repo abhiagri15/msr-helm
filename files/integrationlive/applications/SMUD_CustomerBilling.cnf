@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.data.ISMemDataImpl">
+    <value name="name">SMUD_CustomerBilling</value>
+    <value name="description">Customer Information related to billing</value>
+    <number name="lastUploadedTime" type="java.lang.Long">1718308233958</number>
+    <number name="lastSavedTime" type="java.lang.Long">1718308237069</number>
+    <array name="packages" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmKubra</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.kubra.flows:buildBillDownloadURL</value>
+            <value name="displayName">buildBillDownloadURL</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmSES_v35</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">SmSES_v35.customer.billing.flow:Partner_OpenText_GetInvoice</value>
+            <value name="displayName">Partner_OpenText_GetInvoice</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">SmSES_v35.customer.billing.flow:Partner_OpenText_GetInvoicesByContractAccount</value>
+            <value name="displayName">Partner_OpenText_GetInvoicesByContractAccount</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+    </array>
+    <array name="connections" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="connectionName">SMUD Cloud iPaas</value>
+        <value name="connectionStage">stage00</value>
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+    <array name="tenantAliases" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+  </record>
+</IDataXMLCoder>

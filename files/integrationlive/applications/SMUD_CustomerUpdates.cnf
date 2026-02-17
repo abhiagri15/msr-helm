@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.data.ISMemDataImpl">
+    <value name="name">SMUD_CustomerUpdates</value>
+    <value name="description">Exposing functionality that can update SAP customer records</value>
+    <number name="lastUploadedTime" type="java.lang.Long">1705594681525</number>
+    <number name="lastSavedTime" type="java.lang.Long">1705594686223</number>
+    <array name="packages" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmVendorSEW</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.vendor.sew:updatePassword</value>
+            <value name="displayName">updatePassword</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmSystemSAP</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">SmSystemSAP.customer.account.admin.flow:changeAddress</value>
+            <value name="displayName">changeAddress</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.system.sap.customer:createPhoneNumber</value>
+            <value name="displayName">createPhoneNumber</value>
+            <jboolean name="isShared">false</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.system.sap.customer:updatePhoneNumber</value>
+            <value name="displayName">updatePhoneNumber</value>
+            <jboolean name="isShared">false</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmCustomerPreference</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.customer.preference:setIndustryType</value>
+            <value name="displayName">setIndustryType</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.customer.preference:setMarketingPreference</value>
+            <value name="displayName">setMarketingPreference</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.customer.preference:setOwnerShipStatus</value>
+            <value name="displayName">setOwnerShipStatus</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.customer.preference:upsertPhoneNumber</value>
+            <value name="displayName">upsertPhoneNumber</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmCustomerProfile</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">SmCustomerProfile.api:MyAccount_Profile_Email_MakeEmailPrimary_post</value>
+            <value name="displayName">MyAccount_Profile_Email_MakeEmailPrimary_post</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+    </array>
+    <array name="connections" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="connectionName">SMUD Cloud iPaas</value>
+        <value name="connectionStage">stage00</value>
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+    <array name="tenantAliases" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+  </record>
+</IDataXMLCoder>

@@ -21,4 +21,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app: wm-msr
 app.kubernetes.io/name: {{ include "webmethods-msr.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Values.clusterLabel }}
+cluster: {{ .Values.clusterLabel }}
+{{- end }}
 {{- end }}

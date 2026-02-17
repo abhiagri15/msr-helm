@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.data.ISMemDataImpl">
+    <value name="name">SMUD_IVR</value>
+    <value name="description">IVR services</value>
+    <number name="lastUploadedTime" type="java.lang.Long">1759795739239</number>
+    <number name="lastSavedTime" type="java.lang.Long">1759795755951</number>
+    <array name="packages" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmIVR</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:budgetBillingEnroll</value>
+            <value name="displayName">budgetBillingEnroll</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:calculateMinPay</value>
+            <value name="displayName">calculateMinPay</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:checkBudgetBillingEligible</value>
+            <value name="displayName">checkBudgetBillingEligible</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:checkDeferralDate</value>
+            <value name="displayName">checkDeferralDate</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:checkPAEligible</value>
+            <value name="displayName">checkPAEligible</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:checkPAEligible_v2</value>
+            <value name="displayName">checkPAEligible_v2</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:createDeferral</value>
+            <value name="displayName">createDeferral</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:createInstallmentMultiChannel</value>
+            <value name="displayName">createInstallmentMultiChannel</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:createPAContactLog</value>
+            <value name="displayName">createPAContactLog</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:enterMoveOutAddress</value>
+            <value name="displayName">enterMoveOutAddress</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:getBudgetBillingAmount</value>
+            <value name="displayName">getBudgetBillingAmount</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:getCustomerProfile</value>
+            <value name="displayName">getCustomerProfile</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:processMoveOutRequest</value>
+            <value name="displayName">processMoveOutRequest</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:updatePhoneNumber</value>
+            <value name="displayName">updatePhoneNumber</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.accountServices.flow:validateInstallment</value>
+            <value name="displayName">validateInstallment</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.powerProblems.flow:getPingMeterInfo</value>
+            <value name="displayName">getPingMeterInfo</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.ivr.programs.flow:createMailFulfillment</value>
+            <value name="displayName">createMailFulfillment</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+    </array>
+    <array name="connections" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="connectionName">SMUD Cloud iPaas</value>
+        <value name="connectionStage">stage00</value>
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+    <array name="tenantAliases" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+  </record>
+</IDataXMLCoder>

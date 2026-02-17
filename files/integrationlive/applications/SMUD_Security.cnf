@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.data.ISMemDataImpl">
+    <value name="name">SMUD_Security</value>
+    <value name="description">SMUD security services</value>
+    <number name="lastUploadedTime" type="java.lang.Long">1767655750541</number>
+    <number name="lastSavedTime" type="java.lang.Long">1767655752454</number>
+    <array name="packages" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmUtilSecurity</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.util.security.token:getSessionToken</value>
+            <value name="displayName">getSessionToken</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.util.security:signJWT</value>
+            <value name="displayName">signJWT</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+    </array>
+    <array name="connections" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="connectionName">SMUD Cloud iPaas</value>
+        <value name="connectionStage">stage00</value>
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+    <array name="tenantAliases" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+  </record>
+</IDataXMLCoder>

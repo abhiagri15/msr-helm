@@ -1,0 +1,40 @@
+# ============================================================================
+# Package Configuration ConfigMap
+# ============================================================================
+# This ConfigMap contains environment-specific app.properties for custom packages.
+# Each package's configuration is stored as a separate key and mounted into the
+# package's root directory at runtime (e.g., /packages/AbTest/app.properties).
+#
+# Usage:
+#   - Define package configs in values-{env}.yaml under packageConfigs.packages
+#   - Each package entry needs: name (package name) and appProperties (config content)
+#   - Sensitive values should use ${ENV_VAR} syntax and be injected via Key Vault
+#
+# Example:
+#   packageConfigs:
+#     enabled: true
+#     packages:
+#       - name: MyPackage
+#         appProperties: |
+#           api.url=https://example.com
+#           api.key=${MY_PACKAGE_API_KEY}
+# ============================================================================
+{{- if .Values.packageConfigs.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-package-configs
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+  annotations:
+    description: "Environment-specific package configurations"
+data:
+  {{- range .Values.packageConfigs.packages }}
+  # -------------------------------------------------------------------------
+  # Package: {{ .name }}
+  # -------------------------------------------------------------------------
+  {{ .name }}-app.properties: |
+{{ .appProperties | indent 4 }}
+  {{- end }}
+{{- end }}

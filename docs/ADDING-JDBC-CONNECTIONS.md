@@ -9,32 +9,42 @@ This guide explains how to add new JDBC Adapter connections to the MSR Helm char
 1. [Overview](#overview)
 2. [Prerequisites](#prerequisites)
 3. [Step-by-Step Guide](#step-by-step-guide)
-4. [File Reference](#file-reference)
-5. [Examples](#examples)
-6. [Troubleshooting](#troubleshooting)
+4. [Adding SAP Adapter Connections](#adding-sap-adapter-connections)
+5. [Adding JDBC Pool Connections](#adding-jdbc-pool-connections)
+6. [Examples](#examples)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Overview
 
-Adding a new JDBC Adapter connection requires modifications to three locations:
+The Helm chart uses a simplified approach for credential management:
 
-| Location | Purpose |
-|----------|---------|
-| Azure Key Vault | Store credentials securely |
-| `templates/secretproviderclass.yaml` | Fetch secrets and create environment variables |
-| `adapters/values-jdbc-adapter-{env}.yaml` | Define connection configuration |
+| Data Type | Storage Location | Example |
+|-----------|------------------|---------|
+| **Password** | Azure Key Vault | `dev-jdbcadapter-mssql-password` |
+| **Username** | Values file | `username: "wmadmin"` |
+| **Server/URL** | Values file | `serverName: "server.database.windows.net"` |
+| **Pool Settings** | Values file | `maxPoolSize: 10` |
+
+### Why This Approach?
+
+- **Security**: Only sensitive data (passwords) in Key Vault
+- **Simplicity**: No need to modify template files for new connections
+- **Flexibility**: Easy to change non-sensitive config without Key Vault access
+- **Auditability**: Clear separation of secrets vs configuration
 
 ### Architecture Flow
 
 ```
-Azure Key Vault          SecretProviderClass           ConfigMap              MSR Pod
-┌─────────────────┐     ┌─────────────────────┐     ┌──────────────┐     ┌─────────────┐
-│ dev-jdbc-mydb-  │────>│ Fetch secrets from  │────>│ artConnection│────>│ JDBC Adapter│
-│ username        │     │ Key Vault, create   │     │ properties   │     │ Connection  │
-│ dev-jdbc-mydb-  │     │ K8s secret with     │     │ with $env{}  │     │ Pool        │
-│ password        │     │ env variables       │     │ references   │     │             │
-└─────────────────┘     └─────────────────────┘     └──────────────┘     └─────────────┘
+Values File                 Azure Key Vault           Kubernetes
+┌─────────────────┐        ┌─────────────────┐       ┌─────────────────┐
+│ username        │───────►│                 │       │ ConfigMap       │
+│ serverName      │        │ password only   │──────►│ artConnection   │
+│ databaseName    │        │                 │       │ properties      │
+│ secretName ─────┼───────►│ dev-jdbcadapter-│       │                 │
+│ passwordEnvVar  │        │ mssql-password  │       │ $env{PASSWORD}  │
+└─────────────────┘        └─────────────────┘       └─────────────────┘
 ```
 
 ---
@@ -54,91 +64,31 @@ Azure Key Vault          SecretProviderClass           ConfigMap              MS
 
 ## Step-by-Step Guide
 
-### Step 1: Add Secrets to Azure Key Vault
+### Step 1: Create Password Secret in Azure Key Vault
 
-Add username and password secrets with the environment-specific prefix.
-
-**Naming Convention:** `{prefix}-jdbc-{connection-short-name}-{username|password}`
+**Naming Convention:** `{prefix}-jdbcadapter-{connection}-password`
 
 ```bash
 # Set variables
 VAULT_NAME="wM-kv"
 PREFIX="dev"  # Use: dev, test, or prod
-CONNECTION_NAME="mydb"  # Short name for your connection
+CONNECTION_NAME="oracle"  # Short name for your connection
 
-# Add username secret
+# Create password secret
 az keyvault secret set \
   --vault-name $VAULT_NAME \
-  --name "${PREFIX}-jdbc-${CONNECTION_NAME}-username" \
-  --value "your_db_username"
-
-# Add password secret
-az keyvault secret set \
-  --vault-name $VAULT_NAME \
-  --name "${PREFIX}-jdbc-${CONNECTION_NAME}-password" \
+  --name "${PREFIX}-jdbcadapter-${CONNECTION_NAME}-password" \
   --value "YourSecurePassword123!"
 
-# Verify secrets were created
-az keyvault secret list --vault-name $VAULT_NAME --query "[?starts_with(name, '${PREFIX}-jdbc-${CONNECTION_NAME}')]"
+# Verify secret was created
+az keyvault secret show --vault-name $VAULT_NAME --name "${PREFIX}-jdbcadapter-${CONNECTION_NAME}-password" --query "name"
 ```
 
-**Important:** Repeat for each environment (dev, test, prod) with appropriate values.
+### Step 2: Add Connection to Values File
 
----
-
-### Step 2: Update SecretProviderClass Template
-
-Edit `templates/secretproviderclass.yaml` to fetch the new secrets from Key Vault.
-
-#### 2a. Add to Objects Array
-
-Find the `objects` section and add entries to fetch your new secrets:
+Edit `adapters/values-jdbc-adapter-dev.yaml`:
 
 ```yaml
-# File: templates/secretproviderclass.yaml
-# Location: spec.parameters.objects
-
-# Add these lines in the objects array (around line 50-100)
-{{- if .Values.jdbcAdapter.enabled }}
-# Existing JDBC adapter secrets...
-
-# NEW: MyDB Connection Secrets
-- |
-  objectName: "{{ .Values.azureKeyVault.secretKeyPrefix }}-jdbc-mydb-username"
-  objectType: secret
-- |
-  objectName: "{{ .Values.azureKeyVault.secretKeyPrefix }}-jdbc-mydb-password"
-  objectType: secret
-{{- end }}
-```
-
-#### 2b. Add to SecretObjects Array
-
-Find the `secretObjects` section and add environment variable mappings:
-
-```yaml
-# File: templates/secretproviderclass.yaml
-# Location: spec.secretObjects[0].data
-
-# Add these lines in the data array (around line 150-200)
-# NEW: MyDB Connection Environment Variables
-- key: JDBC_MYDB_USERNAME
-  objectName: "{{ .Values.azureKeyVault.secretKeyPrefix }}-jdbc-mydb-username"
-- key: JDBC_MYDB_PASSWORD
-  objectName: "{{ .Values.azureKeyVault.secretKeyPrefix }}-jdbc-mydb-password"
-```
-
-**Environment Variable Naming Convention:** `JDBC_{CONNECTION_NAME_UPPERCASE}_USERNAME` and `JDBC_{CONNECTION_NAME_UPPERCASE}_PASSWORD`
-
----
-
-### Step 3: Add Connection Configuration
-
-Edit `adapters/values-jdbc-adapter-{env}.yaml` to define the connection.
-
-```yaml
-# File: adapters/values-jdbc-adapter-dev.yaml
-
 jdbcAdapter:
   enabled: true
   connections:
@@ -146,117 +96,203 @@ jdbcAdapter:
     - name: "mssql_db_connection"
       # ... existing config ...
 
-    # NEW CONNECTION: MyDB
-    - name: "mydb_connection"
-      description: "My Database Connection for XYZ Integration"
-
-      # Package Configuration
-      # These must match an existing IS package and folder
-      packageName: "MyPackage"
-      folderName: "MyPackage"
-
-      # Database Connection Details
-      serverName: "mydb-server.database.windows.net"
-      databaseName: "mydatabase"
-      portNumber: 1433
+    # NEW CONNECTION
+    - name: "oracle_db_connection"
+      description: "Oracle Database Connection"
+      packageName: "MyPackage"                          # IS Package name
+      folderName: "connections"                         # Folder within package
+      connectionType: "JDBC Adapter Connection"
+      connectionFactoryInterface: "com.wm.adapter.wmjdbc.JDBCConnectionFactory"
+      driverAlias: "Oracle Thin Driver"
+      dataSourceClass: "oracle.jdbc.pool.OracleDataSource"
+      # Connection details (in values file - not sensitive)
+      serverName: "oracle-server.example.com"
+      databaseName: "ORCL"
+      portNumber: 1521
       networkProtocol: "tcp"
-
-      # Credentials from Key Vault (via environment variables)
-      user: "$env{JDBC_MYDB_USERNAME}"
-      password: "$env{JDBC_MYDB_PASSWORD}"
-
-      # Driver Configuration
-      datasourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
-      otherProperties: "encrypt=true;trustServerCertificate=true;loginTimeout=30"
-
-      # Connection Pool Settings
+      # Credentials
+      username: "oracle_user"                           # Username in values file
+      secretName: "jdbcadapter-oracle-password"         # Key Vault: dev-jdbcadapter-oracle-password
+      passwordEnvVar: "JDBC_ADAPTER_ORACLE_PASSWORD"    # Environment variable name
+      otherProperties: ""
+      transactionType: "LOCAL_TRANSACTION"
+      # Connection pool settings
       minPoolSize: 1
       maxPoolSize: 10
       poolIncrementSize: 1
       blockTimeout: 1000
-      expireTimeout: 60000
-      startupRetryCount: 3
+      expireTimeout: 1000
+      startupRetryCount: 0
       startupBackoffSecs: 10
 ```
 
----
-
-### Step 4: Deploy Changes
+### Step 3: Deploy
 
 ```bash
-# Navigate to helm chart directory
-cd msr-helm
-
-# Upgrade the release with all value files
-helm upgrade wm-msr . -n webmethods \
-  -f values.yaml \
+helm upgrade --install wm-msr ./msr-helm \
   -f values-dev.yaml \
   -f adapters/values-jdbc-adapter-dev.yaml \
-  -f adapters/values-sap-adapter-dev.yaml
-
-# Wait for rollout
-kubectl rollout status statefulset/wm-msr -n webmethods
-
-# Verify the new connection in ConfigMap
-kubectl get configmap wm-msr-config -n webmethods -o yaml | grep -A10 "mydb_connection"
+  -f adapters/values-sap-adapter-dev.yaml \
+  -n webmethods
 ```
 
----
+### Step 4: Force Secret Refresh (if needed)
 
-### Step 5: Verify Deployment
+If the new password doesn't appear in the Kubernetes secret:
 
 ```bash
-# Check pod logs for connection initialization
-kubectl logs -n webmethods wm-msr-0 | grep -i "mydb\|jdbc"
+# Delete existing secret to force refresh
+kubectl delete secret wm-msr-jdbc-secrets -n webmethods
 
-# Verify environment variables are set
-kubectl exec -n webmethods wm-msr-0 -- printenv | grep JDBC_MYDB
+# Delete pods to recreate with new secret
+kubectl delete pods -l app=wm-msr -n webmethods
 
-# Check MSR Admin Console (port-forward)
-kubectl port-forward -n webmethods svc/wm-msr 5555:5555
+# Wait for pods to restart
+kubectl get pods -n webmethods -l app=wm-msr -w
+```
+
+### Step 5: Verify
+
+```bash
+# Check secret has new password
+kubectl get secret wm-msr-jdbc-secrets -n webmethods -o yaml | grep JDBC_ADAPTER_ORACLE
+
+# Check ConfigMap has connection properties
+kubectl get configmap wm-msr-config -n webmethods -o yaml | grep -A5 "oracle_db_connection"
+
+# Verify in MSR Admin Console
+kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
 # Open: http://localhost:5555 -> Adapters -> JDBC Adapter -> Connections
 ```
 
 ---
 
-## File Reference
+## Adding SAP Adapter Connections
 
-### Files to Modify
+### Step 1: Create Password in Key Vault
 
-| File | Changes Required |
-|------|------------------|
-| `templates/secretproviderclass.yaml` | Add secret objects and environment variable mappings |
-| `adapters/values-jdbc-adapter-dev.yaml` | Add connection configuration |
-| `adapters/values-jdbc-adapter-qa.yaml` | Add connection for QA (if applicable) |
-| `adapters/values-jdbc-adapter-prod.yaml` | Add connection for Prod (if applicable) |
+```bash
+az keyvault secret set \
+  --vault-name "wM-kv" \
+  --name "dev-sapadapter-newconn-password" \
+  --value "YourSAPPassword"
+```
 
-### Generated Kubernetes Resources
+### Step 2: Add Connection to Values File
 
-| Resource | Contains |
-|----------|----------|
-| `SecretProviderClass/wm-msr-keyvault-sync` | Key Vault secret fetch configuration |
-| `Secret/wm-msr-jdbc-secrets` | Environment variables from Key Vault |
-| `ConfigMap/wm-msr-config` | artConnection properties for JDBC Adapter |
+Edit `adapters/values-sap-adapter-dev.yaml`:
+
+```yaml
+sapAdapter:
+  enabled: true
+  connections:
+    # NEW SAP CONNECTION
+    - name: "connNode_NewConnection"
+      alias: "NewConnection"
+      enabled: true
+      # SAP System Configuration
+      appServerHost: "sap-server.example.com"
+      client: "100"
+      systemId: "DEV"
+      systemNumber: "00"
+      language: "EN"
+      loadBalancing: "Off"
+      messageServerHost: ""
+      logonGroup: ""
+      gatewayHost: ""
+      gatewayService: ""
+      # Authentication
+      username: "SAP_USER"                              # Username in values file
+      secretName: "sapadapter-newconn-password"         # Key Vault: dev-sapadapter-newconn-password
+      passwordEnvVar: "SAP_NEWCONN_PASSWORD"            # Environment variable name
+      # SNC Configuration
+      sncMode: "No"
+      sncMyName: ""
+      sncPartnerName: ""
+      sncQualityOfService: "Use global build-in default settings"
+      # Other settings...
+      minPoolSize: 0
+      maxPoolSize: 10
+```
+
+### Step 3: Deploy and Verify
+
+Same as JDBC Adapter steps 3-5.
+
+---
+
+## Adding JDBC Pool Connections
+
+JDBC Pools are for MSR internal functions (ISInternal, Xref, etc.).
+
+### Step 1: Create Password in Key Vault
+
+```bash
+az keyvault secret set \
+  --vault-name "wM-kv" \
+  --name "dev-jdbcpool-apppool-password" \
+  --value "YourPoolPassword"
+```
+
+### Step 2: Add Pool to Values File
+
+Edit `values-dev.yaml`:
+
+```yaml
+jdbcPool:
+  enabled: true
+  pools:
+    # Existing pool...
+    - name: "IS-Pool"
+      # ...
+
+    # NEW POOL
+    - name: "App-Pool"
+      description: "Custom Application JDBC Pool"
+      dbURL: "jdbc:wm:sqlserver://app-sql-dev.database.windows.net:1433;databaseName=APP_DEV"
+      username: "app_user"                              # Username in values file
+      secretName: "jdbcpool-apppool-password"           # Key Vault: dev-jdbcpool-apppool-password
+      passwordEnvVar: "JDBC_APP_POOL_PASSWORD"          # Environment variable name
+      driverAlias: "DataDirect Connect JDBC SQL Server Driver"
+      dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
+      minConns: 1
+      maxConns: 50
+      poolThreshold: 5
+      waitingThread: 25
+      expireTime: 60000
+      useSSL: true
+
+  # Optionally add functional alias
+  functionalAliases:
+    - name: "AppDB"
+      connPoolAlias: "App-Pool"
+      failFastMode: true
+```
 
 ---
 
 ## Examples
 
-### Example 1: SQL Server Connection
+### SQL Server JDBC Adapter Connection
 
 ```yaml
 - name: "sqlserver_orders_db"
   description: "Orders Database - SQL Server"
   packageName: "OrdersPackage"
   folderName: "OrdersPackage"
+  connectionType: "JDBC Adapter Connection"
+  connectionFactoryInterface: "com.wm.adapter.wmjdbc.JDBCConnectionFactory"
+  driverAlias: "Microsoft SQL Server Driver"
+  dataSourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
   serverName: "orders-sql.database.windows.net"
   databaseName: "orders"
   portNumber: 1433
   networkProtocol: "tcp"
-  user: "$env{JDBC_ORDERS_USERNAME}"
-  password: "$env{JDBC_ORDERS_PASSWORD}"
-  datasourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
+  username: "orders_user"
+  secretName: "jdbcadapter-orders-password"
+  passwordEnvVar: "JDBC_ADAPTER_ORDERS_PASSWORD"
   otherProperties: "encrypt=true;trustServerCertificate=false"
+  transactionType: "LOCAL_TRANSACTION"
   minPoolSize: 2
   maxPoolSize: 20
   poolIncrementSize: 2
@@ -266,21 +302,26 @@ kubectl port-forward -n webmethods svc/wm-msr 5555:5555
   startupBackoffSecs: 15
 ```
 
-### Example 2: PostgreSQL Connection
+### PostgreSQL JDBC Adapter Connection
 
 ```yaml
 - name: "postgres_analytics_db"
   description: "Analytics Database - PostgreSQL"
   packageName: "AnalyticsPackage"
   folderName: "AnalyticsPackage"
+  connectionType: "JDBC Adapter Connection"
+  connectionFactoryInterface: "com.wm.adapter.wmjdbc.JDBCConnectionFactory"
+  driverAlias: "PostgreSQL Driver"
+  dataSourceClass: "org.postgresql.ds.PGSimpleDataSource"
   serverName: "analytics-postgres.postgres.database.azure.com"
   databaseName: "analytics"
   portNumber: 5432
   networkProtocol: "tcp"
-  user: "$env{JDBC_ANALYTICS_USERNAME}"
-  password: "$env{JDBC_ANALYTICS_PASSWORD}"
-  datasourceClass: "org.postgresql.ds.PGSimpleDataSource"
+  username: "analytics_user"
+  secretName: "jdbcadapter-analytics-password"
+  passwordEnvVar: "JDBC_ADAPTER_ANALYTICS_PASSWORD"
   otherProperties: "ssl=true;sslmode=require"
+  transactionType: "LOCAL_TRANSACTION"
   minPoolSize: 1
   maxPoolSize: 15
   poolIncrementSize: 1
@@ -290,21 +331,26 @@ kubectl port-forward -n webmethods svc/wm-msr 5555:5555
   startupBackoffSecs: 10
 ```
 
-### Example 3: Oracle Connection
+### Oracle JDBC Adapter Connection
 
 ```yaml
 - name: "oracle_erp_db"
   description: "ERP Database - Oracle"
   packageName: "ERPPackage"
   folderName: "ERPPackage"
+  connectionType: "JDBC Adapter Connection"
+  connectionFactoryInterface: "com.wm.adapter.wmjdbc.JDBCConnectionFactory"
+  driverAlias: "Oracle Thin Driver"
+  dataSourceClass: "oracle.jdbc.pool.OracleDataSource"
   serverName: "erp-oracle.company.com"
   databaseName: "ERPDB"
   portNumber: 1521
   networkProtocol: "tcp"
-  user: "$env{JDBC_ERP_USERNAME}"
-  password: "$env{JDBC_ERP_PASSWORD}"
-  datasourceClass: "oracle.jdbc.pool.OracleDataSource"
+  username: "erp_user"
+  secretName: "jdbcadapter-erp-password"
+  passwordEnvVar: "JDBC_ADAPTER_ERP_PASSWORD"
   otherProperties: "oracle.net.CONNECT_TIMEOUT=10000"
+  transactionType: "LOCAL_TRANSACTION"
   minPoolSize: 2
   maxPoolSize: 25
   poolIncrementSize: 2
@@ -320,82 +366,79 @@ kubectl port-forward -n webmethods svc/wm-msr 5555:5555
 
 ### Connection Not Appearing in MSR Admin Console
 
-**Symptom:** Connection doesn't show up in Adapters -> JDBC Adapter -> Connections
-
 **Solutions:**
-1. Verify the package exists in the MSR image:
+1. Verify the package exists:
    ```bash
    kubectl exec -n webmethods wm-msr-0 -- ls /opt/softwareag/IntegrationServer/packages/
    ```
-2. Check ConfigMap has the artConnection properties:
+2. Check ConfigMap:
    ```bash
-   kubectl get configmap wm-msr-config -n webmethods -o yaml | grep "artConnection.*mydb"
+   kubectl get configmap wm-msr-config -n webmethods -o yaml | grep "artConnection.*myconnection"
    ```
-3. Restart the pod to reload configuration:
+3. Restart pods:
    ```bash
-   kubectl delete pod wm-msr-0 -n webmethods
+   kubectl rollout restart statefulset wm-msr -n webmethods
    ```
 
 ### Key Vault Secret Not Found
 
-**Symptom:** Pod fails to start with "secret not found" error
-
 **Solutions:**
-1. Verify secret exists in Key Vault:
+1. Verify secret exists:
    ```bash
-   az keyvault secret show --vault-name wM-kv --name "dev-jdbc-mydb-username"
+   az keyvault secret show --vault-name wM-kv --name "dev-jdbcadapter-myconn-password"
    ```
-2. Check secret naming matches exactly (case-sensitive)
-3. Verify managed identity has Key Vault access:
-   ```bash
-   az keyvault show --name wM-kv --query "properties.accessPolicies"
-   ```
+2. Check naming matches exactly (case-sensitive)
+3. Verify managed identity has Key Vault access
 
 ### Environment Variable Not Set
 
-**Symptom:** Connection fails with authentication error, `$env{}` not resolved
-
 **Solutions:**
-1. Verify environment variable is in the secret:
+1. Delete secret and pods to force refresh:
+   ```bash
+   kubectl delete secret wm-msr-jdbc-secrets -n webmethods
+   kubectl delete pods -l app=wm-msr -n webmethods
+   ```
+2. Check secret after pods restart:
    ```bash
    kubectl get secret wm-msr-jdbc-secrets -n webmethods -o yaml
-   ```
-2. Check SecretProviderClass has the mapping:
-   ```bash
-   kubectl get secretproviderclass wm-msr-keyvault-sync -n webmethods -o yaml | grep "JDBC_MYDB"
-   ```
-3. Verify pod has the secret volume mounted:
-   ```bash
-   kubectl describe pod wm-msr-0 -n webmethods | grep -A5 "keyvault-store"
    ```
 
 ### Database Connection Refused
 
-**Symptom:** Connection pool fails to initialize, "connection refused" in logs
-
 **Solutions:**
-1. Verify database is accessible from AKS:
+1. Test connectivity:
    ```bash
-   kubectl exec -n webmethods wm-msr-0 -- nc -zv mydb-server.database.windows.net 1433
+   kubectl exec -n webmethods wm-msr-0 -- nc -zv server.database.windows.net 1433
    ```
-2. Check Azure SQL firewall allows AKS subnet
-3. Verify database name and port are correct
+2. Check Azure SQL/DB firewall allows AKS subnet
+3. Verify server name, port, and database name
 
 ---
 
 ## Quick Checklist
 
-Use this checklist when adding a new JDBC connection:
+When adding a new connection:
 
-- [ ] Create secrets in Azure Key Vault with correct naming convention
-- [ ] Add secret objects to `templates/secretproviderclass.yaml`
-- [ ] Add environment variable mappings to `templates/secretproviderclass.yaml`
-- [ ] Add connection configuration to `adapters/values-jdbc-adapter-{env}.yaml`
+- [ ] Create password secret in Azure Key Vault with correct naming
+- [ ] Add connection to appropriate values file (`values-dev.yaml` or `adapters/values-*-dev.yaml`)
+- [ ] Set `secretName` to match Key Vault secret (without prefix)
+- [ ] Set `passwordEnvVar` to unique environment variable name
 - [ ] Deploy with `helm upgrade`
-- [ ] Verify connection appears in MSR Admin Console
-- [ ] Test connection from MSR
+- [ ] Force secret refresh if needed (delete secret + pods)
+- [ ] Verify connection in MSR Admin Console
+- [ ] Test connection
 
 ---
 
-*Document Version: 1.1*
+## Naming Convention Reference
+
+| Component | Values File Field | Key Vault Secret | Env Variable |
+|-----------|------------------|------------------|--------------|
+| JDBC Pool | `secretName: "jdbcpool-ispool-password"` | `dev-jdbcpool-ispool-password` | `JDBC_IS_POOL_PASSWORD` |
+| JDBC Adapter | `secretName: "jdbcadapter-mssql-password"` | `dev-jdbcadapter-mssql-password` | `JDBC_ADAPTER_MSSQL_PASSWORD` |
+| SAP Adapter | `secretName: "sapadapter-rfcagency-password"` | `dev-sapadapter-rfcagency-password` | `SAP_RFCAGENCY_PASSWORD` |
+
+---
+
+*Document Version: 2.0*
 *Last Updated: January 2026*

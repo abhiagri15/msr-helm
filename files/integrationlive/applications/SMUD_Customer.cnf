@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.data.ISMemDataImpl">
+    <value name="name">SMUD_Customer</value>
+    <value name="description">	Services for customer data - account, usage</value>
+    <number name="lastUploadedTime" type="java.lang.Long">1706824462202</number>
+    <number name="lastSavedTime" type="java.lang.Long">1706824468465</number>
+    <array name="packages" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmSES_v35</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">SmSES_v35.customer.grabs.flow:Customer_Grabs_GetUnbilledUsageCost</value>
+            <value name="displayName">Customer_Grabs_GetUnbilledUsageCost</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmCustomerProgram</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.customer.program.ev:deleteEnrollment</value>
+            <value name="displayName">deleteEnrollment</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.customer.program.ev:enrollment</value>
+            <value name="displayName">ev_enrollment</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.customer.program.ev:update</value>
+            <value name="displayName">ev_update</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.customer.program.flow:validateCustomerEligibilityForRebates</value>
+            <value name="displayName">validateCustomerEligibilityForRebates</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmSystemSAP</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">SmSystemSAP.customer.program.flow:checkEAPRIncome</value>
+            <value name="displayName">checkEAPRIncome</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">SmSystemSAP.customer.program.flow:validateResCustomerForHPP</value>
+            <value name="displayName">validateResCustomerForHPP</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmCustomerGrabs</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">SmCustomerGrabs.flow:Customer_Grabs_GetCustomer</value>
+            <value name="displayName">Customer_Grabs_GetCustomer</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmCustomerProfile</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.customer.profile:getLinkAccountDetails</value>
+            <value name="displayName">getLinkAccountsDetails</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmMamaOpower</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.mama.opower:getUserInfo</value>
+            <value name="displayName">getUserInfo</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+    </array>
+    <array name="connections" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="connectionName">SMUD Cloud iPaas</value>
+        <value name="connectionStage">stage00</value>
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+    <array name="tenantAliases" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="tenantAlias">Dev io</value>
+      </record>
+    </array>
+  </record>
+</IDataXMLCoder>

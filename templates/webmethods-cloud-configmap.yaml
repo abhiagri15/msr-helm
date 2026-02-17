@@ -1,0 +1,55 @@
+{{- if .Values.webMethodsCloud.enabled }}
+# ============================================================================
+# webMethods Cloud Configuration ConfigMap
+# ============================================================================
+# Contains tenant connections, accounts, and application configurations
+# for webMethods.io Integration / Integration Cloud connectivity
+#
+# Files are mounted to: /opt/softwareag/IntegrationServer/config/integrationlive/
+#
+# Configuration approach:
+# - accounts.cnf and connections.cnf are loaded from files/integrationlive/
+# - Application .cnf files are loaded from files/integrationlive/applications/
+# - All files preserve original format, timestamps, and state data
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-cloud-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  # ============================================================================
+  # accounts.cnf - Tenant Account Configuration
+  # ============================================================================
+  # Loaded from files/integrationlive/accounts.cnf
+  # Contains: default, QA io, SMUD IC, Dev io accounts
+  accounts.cnf: |
+{{ .Files.Get "files/integrationlive/accounts.cnf" | indent 4 }}
+
+  # ============================================================================
+  # connections.cnf - Tenant Connection Configuration
+  # ============================================================================
+  # Loaded from files/integrationlive/connections.cnf
+  # Contains: SMUD IC, default, QA io, Dev io connections
+  connections.cnf: |
+{{ .Files.Get "files/integrationlive/connections.cnf" | indent 4 }}
+
+  # ============================================================================
+  # Application Configuration Files
+  # ============================================================================
+  # Loaded from files/integrationlive/applications/ directory
+  # ============================================================================
+  {{- $appFiles := .Files.Glob "files/integrationlive/applications/*.cnf" }}
+  {{- range $path, $content := $appFiles }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+
+  {{- /* Also support inline application files from values (for overrides) */}}
+  {{- range $key, $value := .Values.webMethodsCloud.applicationFiles }}
+  {{ $key }}: |
+{{ $value | indent 4 }}
+  {{- end }}
+{{- end }}

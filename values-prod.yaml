@@ -32,6 +32,35 @@ jvm:
   minMemory: "1024m"
   maxMemory: "2048m"
 
+# ============================================================================
+# Security Context - Production Environment
+# ============================================================================
+# Uses sagadmin (UID=1724) as standard non-root identity per IBM/SoftwareAG best practices.
+# Init container (copy-keyvault-keystores) runs as root with minimal capabilities.
+# readOnlyRootFilesystem is NOT enabled - postStart hooks write to container root FS.
+#
+# Production hardening notes:
+# - All Linux capabilities are dropped from MSR container
+# - Privilege escalation is disabled
+# - Container enforced to run as non-root (sagadmin UID=1724)
+# - PVC ownership optimized with fsGroupChangePolicy: OnRootMismatch
+# ============================================================================
+securityContext:
+  pod:
+    fsGroup: 1724
+    runAsUser: 1724
+    runAsGroup: 1724
+    runAsNonRoot: true
+    fsGroupChangePolicy: "OnRootMismatch"
+  container:
+    runAsUser: 1724
+    runAsGroup: 1724
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
 # Persistence
 persistence:
   enabled: true
@@ -44,15 +73,16 @@ jdbc:
   enabled: true
   pool:
     name: "IS-Pool"
-    dbURL: "jdbc:postgresql://wm-postgresql.webmethods.svc.cluster.local:5432/isinternal"
+    dbURL: "jdbc:postgresql://postgresql.webmethods.svc.cluster.local:5432/webmethods"
     driverAlias: "PostgresqlDriver"
-    username: "isadmin"
-    password: "isdbpassword"
+    username: "postgres"
+    password: "admin123"
     minConns: 5
     maxConns: 300  # Increased for prod
     poolThreshold: 10
     waitingThread: 100
     expireTime: 60000
+    useSSL: false
   functionalAliases:
     - name: "ISInternal"
       connPoolAlias: "IS-Pool"
@@ -106,16 +136,63 @@ healthProbes:
     failureThreshold: 3
 
 # Universal Messaging Configuration
+# Passwords stored in Azure Key Vault: prod-um-business-password, prod-um-logs-password
 um:
-  connectionEnabled: true
   enabled: true
-  connectionAlias: "IS_UM_CONNECTION"
-  url: "nsp://wm-um.webmethods.svc.cluster.local:9000"
-  user: "Administrator"
-  password: "manage"
-  useCSQ: "true"
-  csqSize: "-1"
-  csqDrainInOrder: "true"
+  connections:
+    # Business UM Connection (Active-Passive Cluster)
+    - connectionAlias: "IS_UM_BUSINESS"
+      connectionEnabled: true
+      url: "nsp://um-business.webmethods.svc.cluster.local:9000"
+      user: "Administrator"
+      useCSQ: "true"
+      csqSize: "-1"
+      csqDrainInOrder: "true"
+      secretName: "um-business-password"
+      passwordEnvVar: "UM_BUSINESS_PASSWORD"
+    # Logs UM Connection (Active-Active Cluster - Combined Service)
+    - connectionAlias: "IS_UM_LOGS"
+      connectionEnabled: true
+      url: "nsp://um-logs-combined.webmethods.svc.cluster.local:9000"
+      user: "Administrator"
+      useCSQ: "true"
+      csqSize: "-1"
+      csqDrainInOrder: "true"
+      secretName: "um-logs-password"
+      passwordEnvVar: "UM_LOGS_PASSWORD"
+
+# Terracotta Cache Manager Configuration
+terracotta:
+  enabled: true
+  cacheManagerName: "IS_TERRACOTTA_CACHE"
+  urls:
+    - "terracotta-0.terracotta-service.webmethods.svc.cluster.local:9510"
+    - "terracotta-1.terracotta-service.webmethods.svc.cluster.local:9510"
+
+# Keystore Configuration (example - for production use Azure Key Vault or secure secrets)
+# To use actual keystore files, add 'fileData' field with base64 encoded content
+keystores: []
+  # - aliasName: "DEFAULT_IS_KEYSTORE"
+  #   description: "Default Integration Server Keystore for SSL/TLS"
+  #   type: "PKCS12"
+  #   provider: "SUN"
+  #   location: "/opt/softwareag/IntegrationServer/config/security/keystore.p12"
+  #   password: "manage"
+  #   isHsm: false
+  #   keys:
+  #     - keyAliasName: "sslkey"
+  #       keyAliasPassword: "manage"
+  #   # fileData: ""  # Base64 encoded keystore file
+
+# Truststore Configuration (example - for production use Azure Key Vault or secure secrets)
+truststores: []
+  # - aliasName: "DEFAULT_IS_TRUSTSTORE"
+  #   description: "Default Integration Server Truststore for SSL/TLS"
+  #   type: "JKS"
+  #   provider: "SUN"
+  #   location: "/opt/softwareag/IntegrationServer/config/security/truststore.jks"
+  #   password: "manage"
+  #   # fileData: ""  # Base64 encoded truststore file
 
 # Autoscaling Configuration (Production)
 autoscaling:
@@ -124,3 +201,70 @@ autoscaling:
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
+
+# ============================================================================
+# Azure Key Vault Integration (Production)
+# ============================================================================
+# Automatically retrieves certificates from Azure Key Vault and converts them
+# to Java keystores/truststores during pod initialization.
+#
+# How it works:
+# 1. CSI Secrets Store Provider mounts truststore certificates to /mnt/secrets-store/
+# 2. Init container uses Azure CLI to download keystore certificates with private keys
+# 3. OpenSSL converts Azure's proprietary PFX format to PEM format
+# 4. OpenSSL creates Java-compatible PKCS12 keystores
+# 5. Java keytool creates truststores from public certificates
+# 6. MSR loads keystores/truststores on startup
+#
+# Prerequisites:
+# - Azure Key Vault created with certificates uploaded (e.g., wM-kv-prod)
+# - AKS cluster with Azure Key Vault CSI driver enabled:
+#   az aks enable-addons --addons azure-keyvault-secrets-provider \
+#     --name <cluster-name> --resource-group <rg-name>
+# - Kubelet managed identity with Key Vault access:
+#   az keyvault set-policy --name wM-kv-prod \
+#     --object-id <kubelet-identity-object-id> \
+#     --secret-permissions get list \
+#     --certificate-permissions get list
+#
+# Production Best Practices:
+# - Use separate Key Vault for production (wM-kv-prod)
+# - Store passwords in Azure Key Vault secrets (not in values file)
+# - Use managed identities for authentication (no credentials in code)
+# - Enable soft-delete and purge protection on Key Vault
+# - Implement RBAC for least privilege access
+# - Set up certificate expiration alerts
+# - Use Premium SKU Key Vault for production workloads
+#
+# For detailed setup instructions, see: AZURE_KEYVAULT_SETUP.md
+# ============================================================================
+azureKeyVault:
+  enabled: false  # Set to true to enable Azure Key Vault integration in production
+  vaultName: "wM-kv-prod"  # Use separate Key Vault for production environment
+  tenantId: ""  # Azure tenant ID (get from: az account show --query tenantId -o tsv)
+  clientId: ""  # Kubelet managed identity client ID (get from: az aks show --query identityProfile.kubeletidentity.clientId -o tsv)
+
+  # Keystore Certificates (certificates with private keys)
+  # These are downloaded using Azure CLI and converted to Java PKCS12 keystores
+  # Upload to Key Vault using:
+  #   az keyvault certificate import --vault-name wM-kv-prod --name prod-ssl-cert --file certificate.pfx
+  certificates: []
+    # Example production keystore configuration:
+    # - certName: "prod-ssl-cert"              # Certificate name in Azure Key Vault
+    #   fileName: "prod_keystore.p12"          # Output keystore filename
+    #   keystoreConfig:
+    #     password: "changeit"                 # Store password in Azure Key Vault secrets for production
+    #     keys:
+    #       - keyAliasName: "prod-server-cert" # Alias for the private key in keystore
+
+  # Truststore Certificates (public certificates only - NO private keys)
+  # These are mounted by CSI driver and imported into truststore by init container
+  # Upload to Key Vault using:
+  #   az keyvault certificate import --vault-name wM-kv-prod --name prod-root-ca --file root-ca.crt
+  truststoreCerts: []
+    # Example production truststore configuration:
+    # - certName: "prod-root-ca"               # Corporate root CA certificate
+    # - certName: "prod-intermediate-ca"       # Intermediate CA certificate
+    # - certName: "prod-partner-bank-cert"     # Partner bank public certificate
+    # - certName: "prod-payment-gateway-cert"  # Payment gateway public certificate
+    # - certName: "prod-api-partner-cert"      # API partner public certificate

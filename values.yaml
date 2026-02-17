@@ -5,6 +5,12 @@
 global:
   namespace: webmethods
 
+## Cluster Label (for multi-cluster monitoring within same namespace)
+## When deploying multiple MSR clusters in the same namespace, use this label
+## to differentiate them in Prometheus/Grafana dashboards and alerts.
+## Example: "business1", "orders", "payments"
+clusterLabel: ""
+
 ## Cluster Configuration
 replicaCount: 2  # Start with 2 nodes, can be scaled up
 
@@ -31,10 +37,94 @@ resources:
     memory: "2Gi"
     cpu: "1000m"
 
+## ============================================================================
+## Security Context Configuration
+## ============================================================================
+## Pod and container security settings following IBM/SoftwareAG best practices.
+## The sagadmin user (UID=1724, GID=1724) is the standard non-root identity
+## for all SoftwareAG/IBM webMethods containers.
+##
+## NOTE: readOnlyRootFilesystem is NOT enabled because MSR postStart hooks
+## need write access to /opt/softwareag/IntegrationServer/config/server.cnf
+## and /opt/softwareag/IntegrationServer/config/Caching/ on the container
+## root filesystem. Enable only if you refactor these to use emptyDir volumes.
+##
+## The init container (copy-keyvault-keystores) runs as root (no securityContext)
+## because it needs apt-get install and chown. This is expected and documented.
+## ============================================================================
+securityContext:
+  # Pod-level security context
+  pod:
+    fsGroup: 1724                       # sagadmin group - ensures PVC files are group-accessible
+    runAsUser: 1724                     # sagadmin user
+    runAsGroup: 1724                    # sagadmin group
+    runAsNonRoot: true                  # Prevent running as root
+    fsGroupChangePolicy: "OnRootMismatch"  # Performance: only change ownership if mismatch
+  # Container-level security context (applied to MSR container)
+  container:
+    runAsUser: 1724
+    runAsGroup: 1724
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false     # Prevent privilege escalation
+    capabilities:
+      drop:
+        - ALL                           # Drop all Linux capabilities
+
 ## JVM Configuration
 jvm:
   minMemory: "512m"
   maxMemory: "1024m"
+
+## ============================================================================
+## Logging Configuration
+## ============================================================================
+## Controls logging levels for Integration Server and adapters
+## Valid levels: Off, Fatal, Error, Warn, Info, Debug, Trace
+##
+## IMPORTANT: Use "Info" for production, "Trace" only for debugging
+## Trace level generates significant log volume and impacts performance
+## ============================================================================
+logging:
+  # General IS debug level (Off, Fatal, Error, Warn, Info, Debug, Trace)
+  level: "Info"
+
+  # Enable verbose server logging
+  verbose: false
+
+  # Enable service audit logging
+  auditLog: false
+
+  # Enable detailed thread logging
+  threadDump: false
+
+  # JDBC logging
+  jdbc:
+    enabled: false
+    level: "Info"
+
+  # SAP Adapter logging configuration
+  # Levels: 0=Off, 1=Fatal, 2=Error, 3=Warn, 4=Info, 5=Debug, 6=Trace
+  sap:
+    # SAP adapter internal log level (0-6, where 6=Trace)
+    level: 4  # Default to Info (4)
+    # JCo trace level (0-10, where 0=off, 10=most verbose)
+    jcoTraceLevel: 0  # Default to off
+    # JCo trace output path
+    jcoTracePath: "/opt/softwareag/IntegrationServer/instances/default/logs"
+    # Facility-specific logging for SAP (format: facility:level)
+    # Example: "SAP*:6,SCC*:6" for TRACE on all SAP facilities
+    facilities: ""
+
+  # Spring Boot / SLF4J logging (for MSR components using Spring)
+  spring:
+    enabled: false  # Set to true to enable Spring Boot logging config
+    rootLevel: "INFO"
+    # Component-specific levels (only applied when spring.enabled=true)
+    components:
+      wm: "INFO"
+      softwareag: "INFO"
+      sapAdapter: "INFO"
+      jco: "INFO"
 
 ## Persistent Storage (per pod)
 persistence:
@@ -160,6 +250,19 @@ um:
   useCSQ: "true"
   csqSize: "-1"
   csqDrainInOrder: "true"
+
+## ============================================================================
+## Caching Configuration
+## ============================================================================
+## Public Cache Managers - In-memory Ehcache instances loaded from XML files
+## XML files in files/config/caching/*.xml are auto-discovered and mounted
+## at /opt/softwareag/IntegrationServer/config/Caching/
+caching:
+  publicCacheManagers:
+    enabled: false  # Set to true to load public cache manager XML files
+    # Admin credentials for auto-starting cache managers via DSP endpoint
+    adminUser: "Administrator"
+    adminPassword: "manage"
 
 ## Terracotta Cache Manager Configuration
 terracotta:

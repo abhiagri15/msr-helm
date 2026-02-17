@@ -7,13 +7,70 @@ metadata:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
   application.properties: |
-    # Enable TRACE logging for JDBC Connection Manager
-    watt.debug.jdbc=true
-    watt.server.jdbcLogLevel=TRACE
+    # ========================================================================
+    # General IS watt.* Logging Configuration
+    # ========================================================================
+    # General IS Debug Level (Off, Fatal, Error, Warn, Info, Debug, Trace)
+    # Configurable via values.yaml: logging.level
+    watt.debug.level={{ .Values.logging.level | default "Info" }}
 
+    # Enable verbose server logging
+    watt.server.verbose={{ .Values.logging.verbose | default false }}
+
+    # Enable service audit logging
+    watt.server.audit.log={{ .Values.logging.auditLog | default false }}
+
+    # Enable detailed thread logging
+    watt.server.threadDump={{ .Values.logging.threadDump | default false }}
+
+    {{- if .Values.logging.jdbc.enabled }}
+    # JDBC Logging Configuration
+    watt.debug.jdbc=true
+    watt.server.jdbcLogLevel={{ .Values.logging.jdbc.level | default "Info" }}
+    {{- end }}
+
+    {{- if .Values.logging.sap.facilities }}
+    # Facility-specific logging (format: facility:level)
+    watt.debug2.facList={{ .Values.logging.sap.facilities }}
+    {{- end }}
+
+    # ========================================================================
+    # SAP Adapter Configuration
+    # ========================================================================
     # SAP SNC Library Path Configuration
     # This property tells the WmSAP adapter where to find the SAP Cryptographic Library
-    watt.sap.snclibpath=/opt/softwareag/IntegrationServer/lib/libsapcrypto.so
+    watt.sap.snclibpath=/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so
+
+    # SAP Adapter Logging Configuration
+    # Levels: 0=Off, 1=Fatal, 2=Error, 3=Warn, 4=Info, 5=Debug, 6=Trace
+    sap.adapter.logLevel={{ .Values.logging.sap.level | default 4 }}
+    sap.adapter.logFacilities=all
+
+    # SAP JCo Trace Configuration
+    # jco.client.trace: 0=off, 1=on
+    {{- if gt (int .Values.logging.sap.jcoTraceLevel) 0 }}
+    jco.client.trace=1
+    {{- else }}
+    jco.client.trace=0
+    {{- end }}
+    # JCo trace level (0-10, where 0=off, 10=most verbose)
+    jco.trace_level={{ .Values.logging.sap.jcoTraceLevel | default 0 }}
+    jco.trace_path={{ .Values.logging.sap.jcoTracePath | default "/opt/softwareag/IntegrationServer/instances/default/logs" }}
+
+    {{- if .Values.logging.spring.enabled }}
+    # ========================================================================
+    # Spring Boot / SLF4J Logging Configuration
+    # ========================================================================
+    logging.level.root={{ .Values.logging.spring.rootLevel | default "INFO" }}
+    logging.level.com.wm={{ .Values.logging.spring.components.wm | default "INFO" }}
+    logging.level.com.softwareag={{ .Values.logging.spring.components.softwareag | default "INFO" }}
+    logging.level.com.wm.app={{ .Values.logging.spring.components.wm | default "INFO" }}
+    logging.level.com.wm.pkg={{ .Values.logging.spring.components.wm | default "INFO" }}
+    logging.level.com.wm.app.b2b={{ .Values.logging.spring.components.wm | default "INFO" }}
+    logging.level.com.wm.app.b2b.server={{ .Values.logging.spring.components.wm | default "INFO" }}
+    logging.level.com.wm.adapter.sap={{ .Values.logging.spring.components.sapAdapter | default "INFO" }}
+    logging.level.com.sap.conn.jco={{ .Values.logging.spring.components.jco | default "INFO" }}
+    {{- end }}
 
     # ========================================================================
     # File Access Control Configuration (WmPublic package)
@@ -40,6 +97,7 @@ data:
     # JDBC Adapter Connection Configuration (artConnection)
     # ========================================================================
     # ART Connection properties for JDBC Adapter connections
+    # Username from values file, password from Azure Key Vault
     # Reference: https://jahntech.com/resources/blog/update-connection-details-for-jdbc-adapter-on-webmethods-integration-server/
     {{- range .Values.jdbcAdapter.connections }}
     # Connection: {{ .packageName }}.{{ .folderName }}.{{ .name }}
@@ -48,8 +106,8 @@ data:
     artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.databaseName={{ .databaseName }}
     artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.portNumber={{ .portNumber }}
     artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.networkProtocol={{ .networkProtocol }}
-    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.user={{ .user }}
-    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.password={{ .password }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.user={{ .username }}
+    artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.password=$env{ {{- .passwordEnvVar -}} }
     artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.datasourceClass={{ .dataSourceClass }}
     artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionSettings.otherProperties={{ .otherProperties }}
     artConnection.{{ .packageName }}.{{ .folderName }}.{{ .name }}.connectionManagerSettings.minimumPoolSize={{ .minPoolSize }}
@@ -63,7 +121,7 @@ data:
     {{- end }}
     {{- end }}
 
-    {{- if .Values.sapAdapter.enabled }}
+    {{- if and .Values.sapAdapter .Values.sapAdapter.enabled }}
     # ========================================================================
     # SAP Adapter Package Auto-Enable Configuration
     # ========================================================================
@@ -89,12 +147,13 @@ data:
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.logonGroup={{ .logonGroup }}
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.gatewayHost={{ .gatewayHost }}
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.gatewayService={{ .gatewayService }}
-    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.user={{ .user }}
-    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.password={{ .password }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.user={{ .username }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.password=$env{ {{- .passwordEnvVar -}} }
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sncMode={{ .sncMode }}
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sncMyName={{ .sncMyName }}
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sncPartnerName={{ .sncPartnerName }}
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sncQualityOfService={{ .sncQualityOfService }}
+    artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.sncAuthentication={{ .sncAuthentication }}
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.connectionType={{ .connectionType }}
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.abapDebug={{ .abapDebug }}
     artConnection.{{ $.Values.sapAdapter.connectionPackageName }}.{{ $.Values.sapAdapter.connectionFolderName }}.{{ .name }}.connectionSettings.rfcTrace={{ .rfcTrace }}
@@ -142,29 +201,31 @@ data:
 
     {{- if .Values.jdbcPool.enabled }}
     # ========================================================================
-    # JDBC POOL Configuration (MSR Internal - ISInternal, Xref, etc.)
+    # JDBC POOL Configuration (Multiple Pools Supported)
     # ========================================================================
-    # Credentials injected via environment variables from Azure Key Vault:
-    #   - JDBC_POOL_URL, JDBC_POOL_USERNAME, JDBC_POOL_PASSWORD
-    jdbc.{{ .Values.jdbcPool.pool.name }}.dbURL=$env{JDBC_POOL_URL}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.description=MSR Internal JDBC Pool
-    jdbc.{{ .Values.jdbcPool.pool.name }}.driverAlias={{ .Values.jdbcPool.pool.driverAlias }}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.dataSourceClass={{ .Values.jdbcPool.pool.dataSourceClass }}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.expireTime={{ .Values.jdbcPool.pool.expireTime }}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.keystoreAlias=
-    jdbc.{{ .Values.jdbcPool.pool.name }}.maxConns={{ .Values.jdbcPool.pool.maxConns }}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.minConns={{ .Values.jdbcPool.pool.minConns }}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.password=$env{JDBC_POOL_PASSWORD}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.poolThreshold={{ .Values.jdbcPool.pool.poolThreshold }}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.snoopenabled=false
-    jdbc.{{ .Values.jdbcPool.pool.name }}.snoopparms=ddtdbg.ProtocolTraceEnable=true;ddtdbg.ProtocolTraceMaxline=16;ddtdbg.ProtocolTraceLocation=logs/snoop/{{ .Values.jdbcPool.pool.name }}.log;ddtdbg.ProtocolTraceShowTime=true
-    jdbc.{{ .Values.jdbcPool.pool.name }}.spyenabled=false
-    jdbc.{{ .Values.jdbcPool.pool.name }}.spyparms=SpyAttributes=(log=(file)logs/spy/{{ .Values.jdbcPool.pool.name }}.log;logTName=yes;timestamp=yes)
-    jdbc.{{ .Values.jdbcPool.pool.name }}.tlsVersion=
-    jdbc.{{ .Values.jdbcPool.pool.name }}.truststoreAlias=
-    jdbc.{{ .Values.jdbcPool.pool.name }}.useSSL={{ .Values.jdbcPool.pool.useSSL }}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.userid=$env{JDBC_POOL_USERNAME}
-    jdbc.{{ .Values.jdbcPool.pool.name }}.waitingThread={{ .Values.jdbcPool.pool.waitingThread }}
+    # Each pool has URL and username in values file, password from Azure Key Vault
+    {{- range .Values.jdbcPool.pools }}
+    # Pool: {{ .name }}
+    jdbc.{{ .name }}.dbURL={{ .dbURL }}
+    jdbc.{{ .name }}.description={{ .description | default "JDBC Pool" }}
+    jdbc.{{ .name }}.driverAlias={{ .driverAlias }}
+    jdbc.{{ .name }}.dataSourceClass={{ .dataSourceClass }}
+    jdbc.{{ .name }}.expireTime={{ .expireTime | default 60000 }}
+    jdbc.{{ .name }}.keystoreAlias=
+    jdbc.{{ .name }}.maxConns={{ .maxConns | default 100 }}
+    jdbc.{{ .name }}.minConns={{ .minConns | default 1 }}
+    jdbc.{{ .name }}.password=$env{ {{- .passwordEnvVar -}} }
+    jdbc.{{ .name }}.poolThreshold={{ .poolThreshold | default 5 }}
+    jdbc.{{ .name }}.snoopenabled=false
+    jdbc.{{ .name }}.snoopparms=ddtdbg.ProtocolTraceEnable=true;ddtdbg.ProtocolTraceMaxline=16;ddtdbg.ProtocolTraceLocation=logs/snoop/{{ .name }}.log;ddtdbg.ProtocolTraceShowTime=true
+    jdbc.{{ .name }}.spyenabled=false
+    jdbc.{{ .name }}.spyparms=SpyAttributes=(log=(file)logs/spy/{{ .name }}.log;logTName=yes;timestamp=yes)
+    jdbc.{{ .name }}.tlsVersion=
+    jdbc.{{ .name }}.truststoreAlias=
+    jdbc.{{ .name }}.useSSL={{ .useSSL | default false }}
+    jdbc.{{ .name }}.userid={{ .username }}
+    jdbc.{{ .name }}.waitingThread={{ .waitingThread | default 50 }}
+    {{- end }}
 
     # JDBC Functional Aliases
     {{- range .Values.jdbcPool.functionalAliases }}
@@ -174,15 +235,17 @@ data:
     {{- end }}
 
     {{- if .Values.um.enabled }}
-    # Universal Messaging Connection Alias
-    # Password injected via environment variable from Azure Key Vault
-    messaging.{{ .Values.um.connectionAlias }}.enabled={{ .Values.um.connectionEnabled }}
-    messaging.{{ .Values.um.connectionAlias }}.url={{ .Values.um.url }}
-    messaging.{{ .Values.um.connectionAlias }}.user={{ .Values.um.user }}
-    messaging.{{ .Values.um.connectionAlias }}.password=$env{UM_PASSWORD}
-    messaging.{{ .Values.um.connectionAlias }}.useCSQ={{ .Values.um.useCSQ }}
-    messaging.{{ .Values.um.connectionAlias }}.csqSize={{ .Values.um.csqSize }}
-    messaging.{{ .Values.um.connectionAlias }}.csqDrainInOrder={{ .Values.um.csqDrainInOrder }}
+    # Universal Messaging Connection Aliases
+    # Passwords injected via environment variables from Azure Key Vault
+    {{- range .Values.um.connections }}
+    messaging.{{ .connectionAlias }}.enabled={{ .connectionEnabled }}
+    messaging.{{ .connectionAlias }}.url={{ .url }}
+    messaging.{{ .connectionAlias }}.user={{ .user }}
+    messaging.{{ .connectionAlias }}.password=$env{ {{- .passwordEnvVar -}} }
+    messaging.{{ .connectionAlias }}.useCSQ={{ .useCSQ }}
+    messaging.{{ .connectionAlias }}.csqSize={{ .csqSize }}
+    messaging.{{ .connectionAlias }}.csqDrainInOrder={{ .csqDrainInOrder }}
+    {{- end }}
     {{- end }}
 
     {{- if .Values.terracotta.enabled }}
@@ -250,6 +313,59 @@ data:
     truststore.{{ .Values.truststoreCertificates.aliasName }}.ksLocation=/opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .Values.truststoreCertificates.fileName }}
     truststore.{{ .Values.truststoreCertificates.aliasName }}.ksPassword=$env{TRUSTSTORE_PASSWORD}
     {{- end }}
+  # ============================================================================
+  # server.cnf - Server Configuration Properties
+  # ============================================================================
+  # Properties in server.cnf are loaded at Integration Server startup
+  # SAP SNC library path MUST be in server.cnf for WmSAP adapter to recognize it
+  # Logging levels are configurable via values.yaml: logging.level, logging.sap.*
+  server.cnf: |
+    # SAP SNC Library Path Configuration
+    # This property tells the WmSAP adapter where to find the SAP Cryptographic Library
+    watt.sap.snclibpath=/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so
+
+    # ============================================================================
+    # SAP Adapter Logging Configuration
+    # ============================================================================
+    # Adapter logging facility settings (0=Off, 1=Fatal, 2=Error, 3=Warn, 4=Info, 5=Debug, 6=Trace)
+    # Configurable via values.yaml: logging.sap.level
+    watt.adapter.WmSAP.debuglevel={{ .Values.logging.sap.level | default 4 }}
+    watt.adapter.WmSAP.defaultLogLevel={{ .Values.logging.sap.level | default 4 }}
+
+    # SAP JCo trace settings
+    # jco.trace_level: 0-10 (0=off, 10=most verbose)
+    # Configurable via values.yaml: logging.sap.jcoTraceLevel
+    jco.trace_level={{ .Values.logging.sap.jcoTraceLevel | default 0 }}
+    jco.trace_path={{ .Values.logging.sap.jcoTracePath | default "/opt/softwareag/IntegrationServer/instances/default/logs" }}
+
+    # Enable verbose adapter connection logging
+    watt.sap.aclset=true
+    watt.sap.listener.checkTime=1
+
+    # ============================================================================
+    # General IS Debug/Logging Settings
+    # ============================================================================
+    # Debug levels: Off, Fatal, Error, Warn, Info, Debug, Trace
+    # Configurable via values.yaml: logging.level
+    watt.debug.level={{ .Values.logging.level | default "Info" }}
+
+    {{- if .Values.logging.sap.facilities }}
+    # Facility-specific logging (format: facility:level)
+    # Levels: 0=Off, 1=Fatal, 2=Error, 3=Warn, 4=Info, 5=Debug, 6=Trace
+    watt.debug2.facList={{ .Values.logging.sap.facilities }}
+    {{- end }}
+
+    # Enable verbose server logging
+    # Configurable via values.yaml: logging.verbose
+    watt.server.verbose={{ .Values.logging.verbose | default false }}
+
+    # Log all service invocations
+    # Configurable via values.yaml: logging.auditLog
+    watt.server.audit.log={{ .Values.logging.auditLog | default false }}
+
+    # Enable detailed thread logging
+    # Configurable via values.yaml: logging.threadDump
+    watt.server.threadDump={{ .Values.logging.threadDump | default false }}
 ---
 {{- if .Values.terracotta.enabled }}
 apiVersion: v1
@@ -357,5 +473,49 @@ data:
 
     # Directories/files with DELETE permission
     allowedDeletePaths={{ .Values.fileAccessControl.allowedDeletePaths }}
+{{- end }}
+---
+# ============================================================================
+# ACL Map ConfigMap (aclmap_sm.cnf - Service ACL Mappings)
+# ============================================================================
+# This ConfigMap creates the aclmap_sm.cnf file that maps services to ACLs.
+# Services listed here will have their ACLs set accordingly.
+#
+# File location: /opt/softwareag/IntegrationServer/instances/default/config/aclmap_sm.cnf
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-aclmap
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  aclmap_sm.cnf: |
+{{ .Files.Get "files/config/aclmap_sm.cnf" | indent 4 }}
+---
+{{- if .Values.caching.publicCacheManagers.enabled }}
+# ============================================================================
+# Public Cache Managers ConfigMap
+# ============================================================================
+# Ehcache XML files for public cache managers loaded from files/config/caching/
+# Each XML file defines a cache manager with its caches.
+# Drop new XML files into files/config/caching/ and they will be auto-discovered.
+#
+# Mount location: /opt/softwareag/IntegrationServer/config/Caching/
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-public-caches
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  {{- $cacheFiles := .Files.Glob "files/config/caching/*.xml" }}
+  {{- range $path, $content := $cacheFiles }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
 {{- end }}
 

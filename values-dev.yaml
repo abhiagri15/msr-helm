@@ -4,6 +4,10 @@
 global:
   namespace: webmethods
 
+# Cluster label for multi-cluster monitoring within same namespace
+# Used by Prometheus ServiceMonitors and Grafana dashboards to differentiate clusters
+clusterLabel: "dev"
+
 replicaCount: 2
 
 image:
@@ -32,6 +36,84 @@ jvm:
   minMemory: "800m"
   maxMemory: "900m"
 
+# ============================================================================
+# Security Context - Development Environment
+# ============================================================================
+# Uses sagadmin (UID=1724) as standard non-root identity per IBM/SoftwareAG best practices.
+# Init container (copy-keyvault-keystores) runs as root with minimal capabilities.
+# readOnlyRootFilesystem is NOT enabled - postStart hooks write to container root FS.
+# ============================================================================
+securityContext:
+  pod:
+    fsGroup: 1724
+    runAsUser: 1724
+    runAsGroup: 1724
+    runAsNonRoot: true
+    fsGroupChangePolicy: "OnRootMismatch"
+  container:
+    runAsUser: 1724
+    runAsGroup: 1724
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# ============================================================================
+# Logging Configuration - Development Environment
+# ============================================================================
+# For development, use "Info" level by default. Switch to "Trace" for debugging.
+# IMPORTANT: Trace level generates significant log volume and impacts performance
+#
+# To enable TRACE logging for debugging:
+#   helm upgrade wm-msr ./msr-helm -f values-dev.yaml \
+#     --set logging.level=Trace \
+#     --set logging.sap.level=6 \
+#     --set logging.sap.jcoTraceLevel=8
+# ============================================================================
+logging:
+  # General IS debug level (Off, Fatal, Error, Warn, Info, Debug, Trace)
+  level: "Info"
+
+  # Enable verbose server logging (helpful for debugging)
+  verbose: false
+
+  # Enable service audit logging
+  auditLog: false
+
+  # Enable detailed thread logging
+  threadDump: false
+
+  # JDBC logging
+  jdbc:
+    enabled: false
+    level: "Info"
+
+  # SAP Adapter logging configuration
+  # Levels: 0=Off, 1=Fatal, 2=Error, 3=Warn, 4=Info, 5=Debug, 6=Trace
+  sap:
+    # SAP adapter internal log level (0-6, where 6=Trace)
+    level: 4  # Default to Info (4)
+    # JCo trace level (0-10, where 0=off, 10=most verbose)
+    # Set to 8 for detailed SAP communication tracing
+    jcoTraceLevel: 0  # Default to off
+    # JCo trace output path
+    jcoTracePath: "/opt/softwareag/IntegrationServer/instances/default/logs"
+    # Facility-specific logging for SAP (format: facility:level)
+    # Example: "SAP*:6,SCC*:6" for TRACE on all SAP facilities
+    facilities: ""
+
+  # Spring Boot / SLF4J logging (for MSR components using Spring)
+  spring:
+    enabled: false  # Set to true to enable Spring Boot logging config
+    rootLevel: "INFO"
+    # Component-specific levels (only applied when spring.enabled=true)
+    components:
+      wm: "INFO"
+      softwareag: "INFO"
+      sapAdapter: "INFO"
+      jco: "INFO"
+
 # Persistence
 persistence:
   enabled: true
@@ -43,20 +125,51 @@ persistence:
 # JDBC POOL Configuration (MSR Internal Database for ISInternal, Xref, etc.)
 # ============================================================================
 # JDBC Pools are used by MSR internal functions like ISInternal, ISDashboardStats, Xref
-# Credentials stored in Azure Key Vault: dev-jdbc-pool-url, dev-jdbc-pool-username, dev-jdbc-pool-password
+# Multiple pools can be configured. Each pool requires:
+#   - name: Pool name (used in application.properties)
+#   - dbURL: JDBC connection URL (in values file - not sensitive)
+#   - username: Database username (in values file - not sensitive)
+#   - secretName: Azure Key Vault secret name for password (password only from KV)
+#   - passwordEnvVar: Environment variable name for password injection
+#
 # Pool sizing configuration is environment-specific and non-sensitive
+# ============================================================================
 jdbcPool:
   enabled: true
-  pool:
-    name: "IS-Pool"
-    driverAlias: "DataDirect Connect JDBC SQL Server Driver"
-    dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
-    minConns: 1
-    maxConns: 100
-    poolThreshold: 5
-    waitingThread: 50
-    expireTime: 60000
-    useSSL: false
+  pools:
+    # Primary pool for ISInternal, Xref, Dashboard
+    - name: "IS-Pool"
+      description: "MSR Internal JDBC Pool"
+      dbURL: "jdbc:wm:sqlserver://wm-sql-abi-dev.database.windows.net:1433;databaseName=isinternal"
+      username: "wmadmin"
+      secretName: "jdbcpool-ispool-password"     # Key Vault: dev-jdbcpool-ispool-password
+      passwordEnvVar: "JDBC_IS_POOL_PASSWORD"
+      driverAlias: "DataDirect Connect JDBC SQL Server Driver"
+      dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
+      minConns: 1
+      maxConns: 100
+      poolThreshold: 5
+      waitingThread: 50
+      expireTime: 60000
+      useSSL: false
+
+    # Example: Additional pool for custom application database
+    # - name: "App-Pool"
+    #   description: "Custom Application JDBC Pool"
+    #   dbURL: "jdbc:wm:sqlserver://app-sql-dev.database.windows.net:1433;databaseName=APP_DEV"
+    #   username: "app_user"
+    #   secretName: "jdbcpool-apppool-password"  # Key Vault: dev-jdbcpool-apppool-password
+    #   passwordEnvVar: "JDBC_APP_POOL_PASSWORD"
+    #   driverAlias: "DataDirect Connect JDBC SQL Server Driver"
+    #   dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
+    #   minConns: 1
+    #   maxConns: 50
+    #   poolThreshold: 5
+    #   waitingThread: 25
+    #   expireTime: 60000
+    #   useSSL: true
+
+  # JDBC Functional Aliases map logical names to physical pool names
   functionalAliases:
     - name: "ISInternal"
       connPoolAlias: "IS-Pool"
@@ -138,21 +251,46 @@ healthProbes:
     failureThreshold: 3
 
 # Universal Messaging Configuration
-# Password stored in Azure Key Vault: dev-um-password
+# Passwords stored in Azure Key Vault: dev-um-business-password, dev-um-logs-password
 um:
   enabled: true
-  connectionEnabled: true
-  connectionAlias: "IS_UM_CONNECTION"
-  url: "nsp://wm-um.webmethods.svc.cluster.local:9000"
-  user: "Administrator"
-  # Password injected via environment variable from Azure Key Vault
-  useCSQ: "true"
-  csqSize: "-1"
-  csqDrainInOrder: "true"
+  connections:
+    # Business UM Connection (Active-Passive Cluster)
+    - connectionAlias: "IS_UM_BUSINESS"
+      connectionEnabled: true
+      url: "nsp://um-business.webmethods.svc.cluster.local:9000"
+      user: "Administrator"
+      useCSQ: "true"
+      csqSize: "-1"
+      csqDrainInOrder: "true"
+      secretName: "um-business-password"
+      passwordEnvVar: "UM_BUSINESS_PASSWORD"
+    # Logs UM Connection (Active-Active Cluster - Combined Service)
+    - connectionAlias: "IS_UM_LOGS"
+      connectionEnabled: true
+      url: "nsp://um-logs-combined.webmethods.svc.cluster.local:9000"
+      user: "Administrator"
+      useCSQ: "true"
+      csqSize: "-1"
+      csqDrainInOrder: "true"
+      secretName: "um-logs-password"
+      passwordEnvVar: "UM_LOGS_PASSWORD"
+
+# =====================
+# CACHING CONFIGURATION
+# =====================
+# Public Cache Managers loaded from files/config/caching/*.xml
+# Each XML defines an Ehcache cache manager with named caches
+# Included: OrderCache (ActiveOrders, OrderHistory),
+#           SessionCache (UserSessions, AuthTokens),
+#           LookupCache (CountryCodes, CurrencyRates, ProductCatalog)
+caching:
+  publicCacheManagers:
+    enabled: true
 
 # Terracotta Cache Manager Configuration
 terracotta:
-  enabled: true
+  enabled: false
   cacheManagerName: "IS_TERRACOTTA_CACHE"
   urls:
     - "terracotta-0.terracotta-service.webmethods.svc.cluster.local:9510"
@@ -235,7 +373,7 @@ azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "e08a2b12-1b21-4660-927a-63debb48df4d"  # Azure Key Vault CSI driver identity Client ID
+  clientId: "b5ed39af-9682-4049-b8a8-c013f5bfc395"  # Azure Key Vault Secrets Provider identity Client ID (webmethods-cluster)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault
@@ -450,3 +588,28 @@ fileAccessControl:
   # Directories/files with DELETE permission for pub.file services
   # Dev environment: Allow deleting from temp directory only (restrictive)
   allowedDeletePaths: "/tmp"
+
+# ============================================================================
+# webMethods Cloud (Integration Cloud) Configuration
+# ============================================================================
+# Enables connectivity to webMethods.io Integration / Integration Cloud
+#
+# Configuration files are loaded from:
+#   - files/integrationlive/accounts.cnf
+#   - files/integrationlive/connections.cnf
+#   - files/integrationlive/applications/*.cnf
+#
+# Password stored in Azure Key Vault: dev-wmcloud-dev-io-password
+# ============================================================================
+webMethodsCloud:
+  enabled: false
+
+  # Cloud Passwords (Azure Key Vault)
+  # Only enable passwords for accounts that are enabled in accounts.cnf
+  cloudPasswords:
+    - alias: "Dev io"
+      secretName: "wmcloud-dev-io-password"
+      envVar: "WMCLOUD_DEV_IO_PASSWORD"
+
+  # Optional: Override application files from values (normally loaded from files/)
+  applicationFiles: {}
