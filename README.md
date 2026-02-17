@@ -45,11 +45,20 @@ Enterprise-grade Helm chart for deploying **webMethods Microservices Runtime (MS
 
 ### Security
 
+- **Pod Security Hardening** - Non-root enforcement (sagadmin UID=1724), dropped Linux capabilities, privilege escalation prevention per IBM/SoftwareAG best practices
+- **Configurable Security Context** - Pod and container-level securityContext configurable via values.yaml
 - **Keystore Management** - Azure Key Vault certificate integration
 - **Truststore Management** - Multi-certificate truststore from Key Vault
 - **TLS/SSL Support** - HTTPS endpoints with custom certificates
 - **File Access Control** - Configurable read/write/delete paths for pub.file services
-- **Pod Security** - Non-root containers and security contexts
+- **Read-Only Volume Mounts** - All ConfigMap/Secret mounts explicitly set to read-only
+- **Init Container Hardening** - Root init container runs with minimal capabilities (CHOWN, DAC_OVERRIDE only)
+
+### Caching
+
+- **Public Cache Managers** - Auto-discovered Ehcache XML configs from `files/config/caching/`
+- **Auto-Start on Boot** - Cache managers automatically started when MSR pods come up via DSP admin endpoint
+- **Terracotta Integration** - Distributed caching with Terracotta BigMemory
 
 ---
 
@@ -70,17 +79,19 @@ kubectl create namespace webmethods
 
 ### 2. Configure Azure Key Vault Secrets
 
+Only passwords are stored in Key Vault. URLs and usernames are configured in values files.
+
 ```bash
 # Set environment prefix (dev, test, or prod)
 PREFIX="dev"
-VAULT="your-keyvault-name"
+VAULT="wM-kv"
 
-# Create required secrets
-az keyvault secret set --vault-name $VAULT --name "${PREFIX}-jdbc-pool-url" \
-  --value "jdbc:sqlserver://server:1433;database=msrdb"
-az keyvault secret set --vault-name $VAULT --name "${PREFIX}-jdbc-pool-username" \
-  --value "sqladmin"
-az keyvault secret set --vault-name $VAULT --name "${PREFIX}-jdbc-pool-password" \
+# Create password secrets (only passwords, not URLs or usernames)
+az keyvault secret set --vault-name $VAULT --name "${PREFIX}-jdbcpool-ispool-password" \
+  --value "YourSecurePassword"
+az keyvault secret set --vault-name $VAULT --name "${PREFIX}-jdbcadapter-mssql-password" \
+  --value "YourSecurePassword"
+az keyvault secret set --vault-name $VAULT --name "${PREFIX}-sapadapter-rfcagency-password" \
   --value "YourSecurePassword"
 ```
 
@@ -143,10 +154,15 @@ kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
 | `jdbcPool.enabled` | Enable MSR internal JDBC pool | `false` |
 | `jdbcAdapter.enabled` | Enable JDBC adapter connections | `false` |
 | `sapAdapter.enabled` | Enable SAP adapter connections/listeners | `false` |
+| `sapAdapter.snc.externalCredentials` | Mount SNC cred_v2/PSE from K8s Secret (for QA/Prod) | `false` |
 | `um.enabled` | Enable Universal Messaging | `false` |
 | `terracotta.enabled` | Enable Terracotta caching | `false` |
+| `caching.publicCacheManagers.enabled` | Enable public Ehcache cache managers | `false` |
 | `fileAccessControl.enabled` | Enable file access control for pub.file | `false` |
 | `packageConfigs.enabled` | Enable package-specific app.properties | `false` |
+| `securityContext.pod.runAsUser` | Pod-level run-as user (sagadmin) | `1724` |
+| `securityContext.pod.runAsNonRoot` | Enforce non-root containers | `true` |
+| `securityContext.container.allowPrivilegeEscalation` | Prevent privilege escalation | `false` |
 
 ### Environment Files
 
@@ -164,9 +180,81 @@ Adapter configurations are separated into dedicated files for better maintainabi
 | File | Purpose |
 |------|---------|
 | `adapters/values-jdbc-adapter-dev.yaml` | JDBC Adapter connections (dev) |
+| `adapters/values-jdbc-adapter-qa.yaml` | JDBC Adapter connections (QA) |
 | `adapters/values-jdbc-adapter-prod.yaml` | JDBC Adapter connections (prod) |
 | `adapters/values-sap-adapter-dev.yaml` | SAP connections & listeners (dev) |
-| `adapters/values-sap-adapter-prod.yaml` | SAP connections & listeners (prod) |
+| `adapters/values-sap-adapter-qa.yaml` | SAP connections & listeners (QA) - SNC external credentials |
+| `adapters/values-sap-adapter-prod.yaml` | SAP connections & listeners (prod) - SNC external credentials |
+
+### Files Directory Structure
+
+The `files/` directory contains configuration files that are mounted into the MSR container:
+
+```
+files/
+├── config/
+│   ├── aclmap_sm.cnf                   # ACL map configuration
+│   └── caching/                        # Public Cache Manager XML configs (auto-discovered)
+│       ├── OrderCache.xml              # ActiveOrders, OrderHistory caches
+│       ├── SessionCache.xml            # UserSessions, AuthTokens caches
+│       └── LookupCache.xml            # CountryCodes, CurrencyRates, ProductCatalog caches
+└── integrationlive/                    # webMethods Cloud (Integration Cloud) config
+    ├── accounts.cnf                    # Cloud account definitions
+    ├── connections.cnf                 # Cloud connection settings
+    └── applications/                   # Application-specific config files
+        ├── <app1>.cnf                  # One file per deployed application
+        ├── <app2>.cnf
+        └── ... (45+ application files)
+```
+
+| Directory | Purpose | Mount Path |
+|-----------|---------|------------|
+| `files/config/caching/` | Public Cache Manager Ehcache XMLs | `/opt/softwareag/IntegrationServer/config/Caching/` (copied by postStart) |
+| `files/config/aclmap_sm.cnf` | ACL map configuration | `/opt/softwareag/IntegrationServer/instances/default/config/aclmap_sm.cnf` |
+| `files/integrationlive/` | webMethods Cloud configuration | `/opt/softwareag/IntegrationServer/config/integrationlive/` |
+
+---
+
+## webMethods Cloud Configuration
+
+To enable webMethods Cloud (Integration Cloud) connectivity:
+
+### 1. Copy Configuration Files
+
+Copy your existing `accounts.cnf`, `connections.cnf`, and application files from an existing MSR:
+
+```bash
+# From source MSR
+scp -r /opt/softwareag/IntegrationServer/instances/default/packages/WmCloud/config/integrationlive/* \
+  msr-helm/files/integrationlive/
+```
+
+### 2. Add Cloud Passwords to Key Vault
+
+```bash
+az keyvault secret set --vault-name "wM-kv" \
+  --name "dev-wmcloud-dev-io-password" \
+  --value "YourCloudPassword"
+```
+
+### 3. Configure in values-dev.yaml
+
+```yaml
+webMethodsCloud:
+  enabled: true
+  cloudPasswords:
+    - alias: "Dev io"                           # Must match alias in accounts.cnf
+      secretName: "wmcloud-dev-io-password"     # Key Vault: dev-wmcloud-dev-io-password
+      envVar: "WMCLOUD_DEV_IO_PASSWORD"         # Environment variable name
+```
+
+### 4. Update accounts.cnf
+
+In `files/integrationlive/accounts.cnf`, set the password to use environment variable:
+
+```properties
+accounts.Dev\ io.password=$env{WMCLOUD_DEV_IO_PASSWORD}
+```
 
 ---
 
@@ -207,30 +295,39 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment-topologies) for detai
 
 ## Azure Key Vault Secret Naming
 
-All secrets use environment-specific prefixes:
+All secrets use environment-specific prefixes with friendly naming conventions:
 
 | Environment | Prefix | Example |
 |-------------|--------|---------|
-| Development | `dev-` | `dev-jdbc-pool-password` |
-| QA/Test | `test-` | `test-jdbc-pool-password` |
-| Production | `prod-` | `prod-jdbc-pool-password` |
+| Development | `dev-` | `dev-jdbcpool-ispool-password` |
+| QA/Test | `test-` | `test-jdbcpool-ispool-password` |
+| Production | `prod-` | `prod-jdbcpool-ispool-password` |
 
-### Required Secrets
+### Configuration Approach
 
-| Secret Name | Description |
-|-------------|-------------|
-| `{prefix}-jdbc-pool-url` | JDBC Pool connection URL |
-| `{prefix}-jdbc-pool-username` | JDBC Pool username |
-| `{prefix}-jdbc-pool-password` | JDBC Pool password |
-| `{prefix}-jdbc-adapter-url` | JDBC Adapter connection URL |
-| `{prefix}-jdbc-adapter-username` | JDBC Adapter username |
-| `{prefix}-jdbc-adapter-password` | JDBC Adapter password |
-| `{prefix}-sap-*-user` | SAP connection username (per connection) |
-| `{prefix}-sap-*-password` | SAP connection password (per connection) |
-| `{prefix}-keystore-password` | Keystore password |
-| `{prefix}-keyalias-password` | Key alias password |
-| `{prefix}-truststore-password` | Truststore password |
-| `{prefix}-um-password` | Universal Messaging password |
+**Only passwords are stored in Azure Key Vault.** Non-sensitive configuration (URLs, usernames, server names) are stored directly in values files:
+
+| Data Type | Storage Location |
+|-----------|------------------|
+| Database URL | Values file (`values-dev.yaml`) |
+| Username | Values file (`values-dev.yaml` or adapter files) |
+| Password | Azure Key Vault |
+| Server/Port | Values file (adapter files) |
+
+### Secret Naming Convention
+
+| Component | Secret Pattern | Example |
+|-----------|---------------|---------|
+| JDBC Pool | `{prefix}-jdbcpool-{poolname}-password` | `dev-jdbcpool-ispool-password` |
+| JDBC Adapter | `{prefix}-jdbcadapter-{connection}-password` | `dev-jdbcadapter-mssql-password` |
+| SAP Adapter | `{prefix}-sapadapter-{alias}-password` | `dev-sapadapter-rfcagency-password` |
+| Keystore | `{prefix}-keystore-password` | `dev-keystore-password` |
+| Key Alias | `{prefix}-keyalias-password` | `dev-keyalias-password` |
+| Truststore | `{prefix}-truststore-password` | `dev-truststore-password` |
+| UM Connection | `{prefix}-um-{alias}-password` | `dev-um-business-password` |
+| SAP SNC cred_v2 | `{prefix}-sap-snc-credv2` | `qa-sap-snc-credv2` (base64 encoded) |
+| SAP SNC PSE | `{prefix}-sap-snc-pse` | `qa-sap-snc-pse` (base64 encoded) |
+| webMethods Cloud | `{prefix}-wmcloud-{account}-password` | `dev-wmcloud-dev-io-password` |
 
 ---
 
@@ -329,14 +426,23 @@ For complete architecture diagrams, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 
 ## Version History
 
-### Current Version: 2.3.0 (January 2026)
+### Current Version: 2.5.0 (February 2026)
 
-- **File Access Control** - Configurable read/write/delete paths for WmPublic pub.file services
-- **Package Configurations** - Environment-specific app.properties per custom package
-- **SAP SNC Support** - Enhanced SAP Adapter with Secure Network Communication
+- **QA Adapter Configurations** - Added `values-jdbc-adapter-qa.yaml` and `values-sap-adapter-qa.yaml` for QA environment
+- **SAP SNC External Credentials** - QA/Prod use K8s Secret volume mount to overlay per-environment cred_v2 and PSE files (`sapAdapter.snc.externalCredentials`)
+- **Multi-Environment Pipeline Support** - Adapter files structured for pipeline-driven Dev → QA → Prod promotion with layered Helm values
+
+### 2.4.0 (February 2026)
+
+- **Container Security Hardening** - Pod/container securityContext with sagadmin (UID=1724) enforcement, dropped capabilities, privilege escalation prevention per IBM/SoftwareAG best practices
+- **Read-Only Volume Mounts** - All ConfigMap/Secret mounts explicitly set `readOnly: true`
+- **Public Cache Managers** - Auto-discovered Ehcache XML configs from `files/config/caching/` with auto-start on pod boot
+- **Init Container Hardening** - Root init container restricted to CHOWN and DAC_OVERRIDE capabilities only
+- **Configurable Security Context** - Full `securityContext.pod` and `securityContext.container` blocks configurable per environment via values files
 
 ### Previous Versions
 
+- **2.3.0** - File access control, package configurations, SAP SNC support
 - **2.2.0** - Adapter separation (JDBC and SAP configs moved to `adapters/` folder)
 - **2.1.0** - Azure Key Vault enhancement, environment-specific secret prefixes
 - **2.0.0** - Azure Key Vault CSI driver integration, truststore certificate support
@@ -362,4 +468,4 @@ This Helm chart is provided for use with licensed webMethods products from Softw
 ---
 
 *Maintained by: webMethods Architecture Team*
-*Last Updated: January 2026*
+*Last Updated: February 2026*
