@@ -8,9 +8,8 @@
 #     -n webmethods-prod
 #
 # SNC Credentials:
-#   cred_v2 and PSE files are stored in Azure Key Vault (base64 encoded)
-#   and mounted as a K8s Secret by the deployment pipeline.
-#   Key Vault secrets: prod-sap-snc-credv2, prod-sap-snc-pse
+#   cred_v2 and PSE files are stored in files/prod/sap_crypto/sec/
+#   and mounted as a K8s Secret by the Helm chart.
 #
 # Passwords in Azure Key Vault:
 #   prod-sapadapter-customerprograms-password
@@ -23,11 +22,10 @@ sapAdapter:
   # SAP SNC Library Path
   sncLibPath: "/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so"
 
-  # SAP SNC External Credentials (mounted from K8s Secret instead of baked-in)
+  # SAP SNC External Credentials (cred_v2 + PSE from Helm chart files)
   snc:
     externalCredentials: true
     secretName: "sap-snc-credentials"
-    pseFileName: "snc.pse"
 
   connectionPackageName: "SmSAPConn"
   connectionFolderName: "SmSAPConn"

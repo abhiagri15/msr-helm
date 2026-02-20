@@ -579,3 +579,25 @@ data:
   jndi_JNDI.properties: |
 {{ .Files.Get (printf "files/%s/config/jndi/jndi_JNDI.properties" .Values.environment) | indent 4 }}
 {{- end }}
+---
+{{- if and .Values.sapAdapter .Values.sapAdapter.snc .Values.sapAdapter.snc.externalCredentials .Values.environment }}
+# ============================================================================
+# SAP SNC Credentials Secret
+# ============================================================================
+# Environment-specific SAP SNC credentials (cred_v2 + PSE) loaded from
+# files/{environment}/sap_crypto/sec/
+# Mounted at /opt/softwareag/sap/snc/sap_crypto/sec (replaces baked-in files)
+# ============================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.sapAdapter.snc.secretName | default "sap-snc-credentials" }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  {{- $sncFiles := .Files.Glob (printf "files/%s/sap_crypto/sec/*" .Values.environment) }}
+  {{- range $path, $content := $sncFiles }}
+  {{ base $path }}: {{ $content | b64enc }}
+  {{- end }}
+{{- end }}

@@ -26,6 +26,10 @@
 #   - sncQualityOfService: Protection level (default: global settings)
 #   - sncAuthentication: Authentication method (e.g., "User and Password")
 #
+# SNC Credentials:
+#   cred_v2 and PSE files are stored in files/dev/sap_crypto/sec/
+#   and mounted as a K8s Secret by the Helm chart.
+#
 # Passwords stored in Azure Key Vault:
 #   - dev-sapadapter-customerprograms-password
 #   - dev-sapadapter-rfcagency-password
@@ -37,6 +41,11 @@ sapAdapter:
   # SAP SNC Library Path
   # This setting is injected into server.cnf for the SAP Adapter to recognize
   sncLibPath: "/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so"
+
+  # SAP SNC External Credentials (cred_v2 + PSE from Helm chart files)
+  snc:
+    externalCredentials: true
+    secretName: "sap-snc-credentials"
 
   # Package and folder where SAP connections are defined
   connectionPackageName: "SmSAPConn"
