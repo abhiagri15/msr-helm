@@ -1370,6 +1370,43 @@ sapAdapter:
 - `{prefix}-sap-{connection}-user` - SAP connection username
 - `{prefix}-sap-{connection}-password` - SAP connection password
 
+### SAP SNC Credentials
+
+SAP Secure Network Communication (SNC) requires two credential files that differ per environment:
+
+| File | Purpose | Location |
+|------|---------|----------|
+| `cred_v2` | SAP ticket credential cache | `files/{env}/sap_crypto/sec/cred_v2` |
+| `esbdev.pse` | PSE identity file (name varies by env) | `files/{env}/sap_crypto/sec/esbdev.pse` |
+
+These files are:
+- Stored in the Helm chart under `files/{environment}/sap_crypto/sec/`
+- Deployed as a **K8s Secret** (`sap-snc-credentials`) by the chart
+- Mounted at `/opt/softwareag/sap/snc/sap_crypto/sec` (replaces baked-in files)
+- Controlled by the `sapAdapter.snc.externalCredentials` toggle in adapter values
+
+**How it works:**
+1. The Helm template globs all files in `files/{env}/sap_crypto/sec/`
+2. Creates a K8s Secret with each file as a key (binary-safe via `.AsSecrets`)
+3. The StatefulSet mounts the Secret to `SECUDIR`, replacing baked-in credentials
+4. SAP Cryptographic Library reads `cred_v2` and PSE from the mounted path
+
+**Enable in adapter values:**
+```yaml
+sapAdapter:
+  enabled: true
+  snc:
+    externalCredentials: true         # Enable external SNC credential mounting
+    secretName: "sap-snc-credentials" # K8s Secret name (default)
+```
+
+**To update credentials for a new environment:**
+1. Obtain the environment-specific `cred_v2` and PSE files from SAP Basis team
+2. Place them in `files/{env}/sap_crypto/sec/`
+3. Deploy — Helm creates the Secret and mounts it automatically
+
+> **Note**: The PSE filename is tied to the SNC identity (e.g., `esbdev.pse` for Dev, potentially different for QA/Prod). All files in the directory are included in the Secret automatically.
+
 ### File Access Control Configuration
 
 File access control restricts which directories the `pub.file` services can read, write, or delete.
