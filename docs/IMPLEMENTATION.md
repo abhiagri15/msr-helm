@@ -10,11 +10,13 @@
 6. [Helm Chart Deployment](#helm-chart-deployment)
 7. [Security Context Configuration](#security-context-configuration)
 8. [Caching Configuration](#caching-configuration)
-9. [Environment-Specific Deployments](#environment-specific-deployments)
-10. [Integration Configuration](#integration-configuration)
-11. [Troubleshooting](#troubleshooting)
-12. [Upgrade Procedures](#upgrade-procedures)
-13. [Backup and Recovery](#backup-and-recovery)
+9. [JMS/JNDI Configuration](#jmsjndi-configuration-universal-messaging)
+10. [License Configuration](#license-configuration)
+11. [Environment-Specific Deployments](#environment-specific-deployments)
+12. [Integration Configuration](#integration-configuration)
+13. [Troubleshooting](#troubleshooting)
+14. [Upgrade Procedures](#upgrade-procedures)
+15. [Backup and Recovery](#backup-and-recovery)
 
 ---
 
@@ -527,6 +529,9 @@ All ConfigMap and Secret volume mounts are set to `readOnly: true` to prevent ac
 | public-caches | ConfigMap | Yes |
 | aclmap-config | ConfigMap | Yes |
 | cloud-config-* | ConfigMap | Yes |
+| jms-config | ConfigMap | Yes |
+| license-key | ConfigMap | Yes |
+| tc-license | ConfigMap | Yes |
 | msr-data (PVC) | PVC | **No** (MSR writes packages, logs, config) |
 | kv-keystores (emptyDir) | emptyDir | **No** (init container writes converted keystores) |
 
@@ -569,14 +574,14 @@ The MSR Helm chart supports two types of caching:
 
 ### Public Cache Managers (Ehcache)
 
-Public cache managers provide in-memory caching within each MSR pod. Cache XML files are placed in `files/config/caching/` and auto-discovered by the Helm chart.
+Public cache managers provide in-memory caching within each MSR pod. Cache XML files are placed in `files/{environment}/config/caching/` and auto-discovered by the Helm chart.
 
 #### Step 1: Create Cache XML Files
 
-Place Ehcache 2.x XML files in `files/config/caching/`:
+Place Ehcache 2.x XML files in `files/{environment}/config/caching/` (e.g., `files/dev/config/caching/`):
 
 ```xml
-<!-- files/config/caching/OrderCache.xml -->
+<!-- files/dev/config/caching/OrderCache.xml -->
 <ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
          name="OrderCacheManager"
@@ -603,7 +608,7 @@ caching:
 
 #### Step 3: How It Works
 
-1. **ConfigMap**: All XML files in `files/config/caching/` are packaged into a ConfigMap
+1. **ConfigMap**: All XML files in `files/{environment}/config/caching/` are packaged into a ConfigMap
 2. **Volume Mount**: ConfigMap is mounted read-only at `/tmp/caching-configs/`
 3. **postStart Hook**: Copies XML files from `/tmp/caching-configs/` to `/opt/softwareag/IntegrationServer/config/Caching/` (writable root filesystem)
 4. **Auto-Start**: Background process in postStart hook waits for MSR to be healthy, then calls the DSP admin endpoint to start each cache manager
@@ -622,7 +627,7 @@ kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
 
 #### Adding New Cache Managers
 
-1. Create a new XML file in `files/config/caching/` (e.g., `CustomerCache.xml`)
+1. Create a new XML file in `files/{environment}/config/caching/` (e.g., `files/dev/config/caching/CustomerCache.xml`)
 2. Run `helm upgrade` — the new file is automatically included in the ConfigMap
 3. The postStart hook discovers and starts it on the next pod restart
 
@@ -648,6 +653,129 @@ terracotta:
 ```
 
 When `waitForReady: true`, an init container polls each Terracotta URL until all are accessible, preventing MSR startup failures due to Terracotta unavailability.
+
+---
+
+## JMS/JNDI Configuration (Universal Messaging)
+
+### Overview
+
+The MSR Helm chart can mount JMS and JNDI configuration files for Universal Messaging connectivity. These files are environment-specific and located in `files/{environment}/config/`.
+
+### Configuration Files
+
+| File | Mount Path | Purpose |
+|------|------------|---------|
+| `jms.cnf` | `/opt/softwareag/IntegrationServer/config/jms.cnf` | JMS connection aliases and provider settings |
+| `jndi/jndi_JNDI.properties` | `/opt/softwareag/IntegrationServer/config/jndi/jndi_JNDI.properties` | JNDI provider URL and factory configuration |
+
+### Step 1: Place Files in Environment Directory
+
+```
+files/dev/config/
+├── jms.cnf
+└── jndi/
+    └── jndi_JNDI.properties
+```
+
+Copy the same files to `files/qa/config/` and `files/prod/config/`, adjusting UM URLs per environment.
+
+### Step 2: Enable in Values
+
+```yaml
+# values-dev.yaml
+environment: dev
+jmsConfig:
+  enabled: true
+```
+
+### Step 3: How It Works
+
+1. **ConfigMap**: When `jmsConfig.enabled` is true, a dedicated ConfigMap (`{release}-jms-config`) is created containing both files from `files/{environment}/config/`
+2. **Volume Mount**: The ConfigMap is mounted as individual subPath files at the exact paths MSR expects
+3. **Read-Only**: Both mounts are `readOnly: true`
+
+### Step 4: Verify
+
+```bash
+# Check JMS config is mounted
+kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+  cat /opt/softwareag/IntegrationServer/config/jms.cnf
+
+# Check JNDI properties
+kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+  cat /opt/softwareag/IntegrationServer/config/jndi/jndi_JNDI.properties
+```
+
+---
+
+## License Configuration
+
+### Overview
+
+The MSR Helm chart supports two types of license files, both mounted via ConfigMaps and disabled by default to prevent startup errors from placeholder files.
+
+| License | File | Mount Path | Toggle |
+|---------|------|------------|--------|
+| IS/MSR License | `licenseKey.xml` | `/opt/softwareag/IntegrationServer/instances/default/config/licenseKey.xml` | `license.enabled` |
+| Terracotta Client License | `terracotta-license.key` | `/opt/softwareag/IntegrationServer/config/terracotta-license.key` | `terracotta.enabled` |
+
+### Step 1: Obtain License Files
+
+1. Log in to [Empower](https://empower.softwareag.com) or IBM Passport Advantage
+2. Download your IS/MSR license key (`licenseKey.xml`)
+3. Download your Terracotta BigMemory Max license key (`terracotta-license.key`)
+
+### Step 2: Replace Placeholder Files
+
+Replace the placeholder files in each environment directory:
+
+```bash
+# IS license (replace for each environment)
+cp /path/to/real/licenseKey.xml files/dev/license/licenseKey.xml
+cp /path/to/real/licenseKey.xml files/qa/license/licenseKey.xml
+cp /path/to/real/licenseKey.xml files/prod/license/licenseKey.xml
+
+# Terracotta client license (same license as TC server)
+cp /path/to/real/terracotta-license.key files/dev/license/terracotta-license.key
+cp /path/to/real/terracotta-license.key files/qa/license/terracotta-license.key
+cp /path/to/real/terracotta-license.key files/prod/license/terracotta-license.key
+```
+
+### Step 3: Enable in Values Files
+
+```yaml
+# values-dev.yaml (and similarly qa, prod)
+license:
+  enabled: true    # Only set to true AFTER replacing placeholder files
+```
+
+The Terracotta client license is automatically mounted when `terracotta.enabled: true` — no separate toggle needed. The chart also sets the JVM property `-Dcom.tc.productkey.path` automatically.
+
+### Step 4: Deploy and Verify
+
+```bash
+# Deploy
+helm upgrade --install wm-msr ./msr-helm -f values-dev.yaml
+
+# Verify IS license is mounted
+kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+  ls -la /opt/softwareag/IntegrationServer/instances/default/config/licenseKey.xml
+
+# Verify TC license is mounted (if Terracotta is enabled)
+kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+  ls -la /opt/softwareag/IntegrationServer/config/terracotta-license.key
+
+# Check MSR admin console for license status
+kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
+# Open: http://localhost:5555 → Settings → Licensing
+```
+
+### How It Works
+
+1. **IS License**: When `license.enabled: true`, a ConfigMap (`{release}-license`) is created from `files/{environment}/license/licenseKey.xml` and mounted read-only at the MSR license path
+2. **TC Client License**: When `terracotta.enabled: true`, a ConfigMap (`{release}-tc-license`) is created from `files/{environment}/license/terracotta-license.key`, mounted read-only, and the JVM property `-Dcom.tc.productkey.path` is added to `JAVA_CUSTOM_OPTS`
+3. **Safety**: Both are disabled by default. Mounting placeholder files causes MSR startup errors, so only enable after placing real licenses
 
 ---
 
@@ -1294,5 +1422,5 @@ packageConfigs:
 
 ---
 
-*Document Version: 2.4.0*
+*Document Version: 2.7.0*
 *Last Updated: February 2026*

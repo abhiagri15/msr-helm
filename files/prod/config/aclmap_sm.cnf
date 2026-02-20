@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Values version="2.0">
+  <value name="briansTest">Internal</value>
+  <value name="SmRemoteCR.IVR.ws.provider:PayArrngManagementService">Anonymous</value>
+  <value name="api.v1.customer.moves.processMoveOut:_post">Anonymous</value>
+  <value name="api.v1.esri.notifications:_post">Anonymous</value>
+  <value name="api.v1.systems.DSM.brfValue:_get">Anonymous</value>
+  <value name="api.v1.smud.mama.dashboard.accountList:_get">Anonymous</value>
+  <value name="api.v2_5.customers.moves.processMoveOut:_post">Anonymous</value>
+  <value name="api.v1_1.mobile.residential.outage.verification:_post">Anonymous</value>
+  <value name="api.v1_0.loadTest.loadTestContactLog:_post">Anonymous</value>
+  <value name="SmSES_v30.customer.outboundComm.flow.util:sendVerification">Default</value>
+  <value name="api.v1.customers.program.peakCorps:_post">Anonymous</value>
+  <value name="wm.server.portAccess">Administrators</value>
+  <value name="team.pub.utils">Internal</value>
+  <value name="api.v1.customers.outboundComm.sms.receiveVerification:_post">Anonymous</value>
+  <value name="SmDSM">Internal</value>
+  <value name="SmKubra.ws.provider:KubraManagementService">Anonymous</value>
+</Values>

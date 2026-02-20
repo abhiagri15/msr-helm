@@ -4,8 +4,14 @@
 global:
   namespace: webmethods
 
+environment: prod
+
 replicaCount: 3
 
+## Image Configuration
+## CI/CD pipeline overrides image.tag with immutable SHA tag via:
+##   --set image.tag=11.1.0.6-sha-<gitSha>
+## The tag below is a fallback for manual deploys only.
 image:
   repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
   tag: "11.1.0.6-postgresql-v2"
@@ -134,6 +140,25 @@ healthProbes:
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 3
+
+# ============================================================================
+# License Configuration (files/prod/license/)
+# ============================================================================
+# Set enabled: true ONLY after placing your real license files.
+# Mounting placeholder files will cause startup errors.
+#
+# Steps to enable:
+#   1. Replace files/prod/license/licenseKey.xml with your actual IS license
+#   2. Replace files/prod/license/terracotta-license.key with your actual TC license
+#   3. Set license.enabled: true below
+#   4. Redeploy: helm upgrade wm-msr ./msr-helm -f values-prod.yaml
+# ============================================================================
+license:
+  enabled: false
+
+# JMS/JNDI Configuration (UM JMS Provider)
+jmsConfig:
+  enabled: true
 
 # Universal Messaging Configuration
 # Passwords stored in Azure Key Vault: prod-um-business-password, prod-um-logs-password

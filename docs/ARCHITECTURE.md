@@ -4,7 +4,7 @@
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 2.4.0 |
+| Version | 2.7.0 |
 | Last Updated | February 2026 |
 | Author | webMethods Platform Team |
 | Classification | Internal |
@@ -197,6 +197,10 @@ Each MSR pod consists of:
 │  │   • /mnt/secrets-store     - Azure Key Vault (CSI)       │   │
 │  │   • /opt/.../kv-keystores  - Converted keystores          │   │
 │  │   • /opt/.../config        - Application properties       │   │
+│  │   • /opt/.../config/jms.cnf - JMS aliases (if enabled)   │   │
+│  │   • /opt/.../config/jndi/  - JNDI properties (if enabled)│   │
+│  │   • /opt/.../config/licenseKey.xml - IS license (if lic) │   │
+│  │   • /opt/.../config/tc-license.key - TC license (if TC)  │   │
 │  │   • /var/msr/data          - Persistent data (PVC)       │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                  │
@@ -205,6 +209,10 @@ Each MSR pod consists of:
 │  │ keyvault-store   │ │ msr-data (PVC)   │ │ config         │  │
 │  │ (CSI Driver)     │ │ (Persistent)     │ │ (ConfigMap)    │  │
 │  └──────────────────┘ └──────────────────┘ └────────────────┘  │
+│  ┌──────────────────┐ ┌──────────────────┐                     │
+│  │ jms-config       │ │ license-key      │ ◄── License         │
+│  │ (ConfigMap)      │ │ tc-license       │    ConfigMaps       │
+│  └──────────────────┘ └──────────────────┘    (if enabled)     │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -222,23 +230,38 @@ Each MSR pod consists of:
 ```
 msr-helm/
 ├── README.md               # Quick start guide
-├── Chart.yaml              # Chart metadata (v2.4.0)
-├── values.yaml             # Default configuration (security context, caching, etc.)
+├── Chart.yaml              # Chart metadata (v2.6.0)
+├── values.yaml             # Default configuration (security context, caching, license, etc.)
 ├── values-dev.yaml         # Development environment overrides
 ├── values-qa.yaml          # QA environment overrides
 ├── values-prod.yaml        # Production environment overrides
 ├── adapters/               # Adapter configurations (separated for maintainability)
 │   ├── values-jdbc-adapter-dev.yaml   # JDBC connections for dev
+│   ├── values-jdbc-adapter-qa.yaml    # JDBC connections for QA
 │   ├── values-jdbc-adapter-prod.yaml  # JDBC connections for prod
 │   ├── values-sap-adapter-dev.yaml    # SAP connections/listeners for dev
+│   ├── values-sap-adapter-qa.yaml     # SAP connections/listeners for QA
 │   └── values-sap-adapter-prod.yaml   # SAP connections/listeners for prod
-├── files/                  # Static files mounted into MSR container
-│   └── config/
-│       ├── aclmap_sm.cnf              # ACL map configuration
-│       └── caching/                   # Public Cache Manager Ehcache XMLs
-│           ├── OrderCache.xml         # ActiveOrders, OrderHistory
-│           ├── SessionCache.xml       # UserSessions, AuthTokens
-│           └── LookupCache.xml        # CountryCodes, CurrencyRates, ProductCatalog
+├── files/                  # Environment-specific static files mounted into MSR container
+│   ├── dev/                # Development environment files
+│   │   ├── config/
+│   │   │   ├── aclmap_sm.cnf          # ACL map configuration
+│   │   │   ├── jms.cnf               # JMS connection aliases (UM)
+│   │   │   ├── jndi/
+│   │   │   │   └── jndi_JNDI.properties  # JNDI provider configuration
+│   │   │   └── caching/              # Public Cache Manager Ehcache XMLs
+│   │   │       ├── OrderCache.xml
+│   │   │       ├── SessionCache.xml
+│   │   │       └── LookupCache.xml
+│   │   ├── license/                  # License files (placeholders)
+│   │   │   ├── licenseKey.xml        # IS/MSR license key
+│   │   │   └── terracotta-license.key # TC BigMemory client license
+│   │   └── integrationlive/          # webMethods Cloud configuration
+│   │       ├── accounts.cnf
+│   │       ├── connections.cnf
+│   │       └── applications/*.cnf
+│   ├── qa/                 # QA environment files (same structure as dev)
+│   └── prod/               # Production environment files (same structure as dev)
 ├── docs/                   # Documentation
 │   ├── ARCHITECTURE.md     # This document
 │   ├── IMPLEMENTATION.md   # Deployment guides
@@ -247,7 +270,7 @@ msr-helm/
     ├── _helpers.tpl        # Template helpers
     ├── statefulset.yaml    # MSR StatefulSet (security contexts, init containers)
     ├── service.yaml        # Kubernetes Service
-    ├── configmap.yaml      # Application config, cache configs, ACL map
+    ├── configmap.yaml      # Application config, cache configs, ACL map, JMS/JNDI
     ├── secrets.yaml        # JDBC/security secrets
     ├── secretproviderclass.yaml  # Azure Key Vault CSI integration
     ├── hpa.yaml            # Horizontal Pod Autoscaler
@@ -256,7 +279,9 @@ msr-helm/
     └── webmethods-cloud-configmap.yaml  # webMethods Cloud config
 ```
 
-**Note:** Adapter configurations are separated into the `adapters/` folder to improve maintainability when dealing with many JDBC or SAP connections. This allows different teams to manage adapter configs independently.
+**Key design decisions:**
+- **Environment-specific files**: The `files/` directory is organized by environment (`dev/`, `qa/`, `prod/`). The `environment` value in each values file drives which directory is used at deploy time via `files/{{ .Values.environment }}/`.
+- **Adapter separation**: Adapter configurations are in the `adapters/` folder to improve maintainability when dealing with many JDBC or SAP connections. This allows different teams to manage adapter configs independently.
 
 ---
 
@@ -751,6 +776,8 @@ Storage Classes:
 | PVC (msr-data) | /var/msr/data | Packages, logs | Retained on restart |
 | CSI (keyvault) | /mnt/secrets-store | Certificates | Re-mounted on start |
 | ConfigMap | /opt/.../config | Application config | Updated on upgrade |
+| ConfigMap (license) | /opt/.../config/licenseKey.xml | IS license key | Updated on upgrade |
+| ConfigMap (tc-license) | /opt/.../config/terracotta-license.key | TC client license | Updated on upgrade |
 | EmptyDir | /opt/.../kv-keystores | Converted keystores | Ephemeral |
 
 ---
@@ -880,14 +907,20 @@ spec:
 msr-helm/
 ├── README.md            # Quick start guide
 ├── values.yaml          # Base configuration (defaults)
-├── values-dev.yaml      # Development overrides (core MSR config)
-├── values-qa.yaml       # QA/Test overrides
-├── values-prod.yaml     # Production overrides
+├── values-dev.yaml      # Development overrides (environment: dev)
+├── values-qa.yaml       # QA/Test overrides (environment: qa)
+├── values-prod.yaml     # Production overrides (environment: prod)
 ├── adapters/            # Separated adapter configurations
 │   ├── values-jdbc-adapter-dev.yaml   # JDBC connections (dev)
+│   ├── values-jdbc-adapter-qa.yaml    # JDBC connections (QA)
 │   ├── values-jdbc-adapter-prod.yaml  # JDBC connections (prod)
 │   ├── values-sap-adapter-dev.yaml    # SAP connections/listeners (dev)
+│   ├── values-sap-adapter-qa.yaml     # SAP connections/listeners (QA)
 │   └── values-sap-adapter-prod.yaml   # SAP connections/listeners (prod)
+├── files/               # Environment-specific static files
+│   ├── dev/             # Dev files (config/, integrationlive/)
+│   ├── qa/              # QA files (same structure)
+│   └── prod/            # Prod files (same structure)
 ├── docs/                # Documentation
 │   ├── ARCHITECTURE.md  # This document
 │   └── IMPLEMENTATION.md # Deployment guides
@@ -964,6 +997,10 @@ helm upgrade --install wm-msr ./msr-helm \
 | Container security hardening (sagadmin UID 1724) | IBM/SoftwareAG best practice, non-root, drop all caps | Feb 2026 |
 | Read-only ConfigMap/Secret mounts | Prevent accidental modification of mounted configs | Feb 2026 |
 | Public cache managers (Ehcache XML) | In-memory caching with auto-discovery and auto-start | Feb 2026 |
+| Environment-specific files (`files/{env}/`) | Per-environment config files (aclmap, caching, integrationlive, JMS) without chart duplication | Feb 2026 |
+| JMS/JNDI ConfigMap mount | UM JMS connectivity via `jms.cnf` and `jndi_JNDI.properties`, toggleable per env | Feb 2026 |
+| QA adapter configurations | Full Dev/QA/Prod adapter parity for JDBC and SAP | Feb 2026 |
+| License management via ConfigMap | IS + TC client licenses mounted per environment, disabled by default for safety | Feb 2026 |
 
 ---
 

@@ -492,15 +492,15 @@ metadata:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
   aclmap_sm.cnf: |
-{{ .Files.Get "files/config/aclmap_sm.cnf" | indent 4 }}
+{{ .Files.Get (printf "files/%s/config/aclmap_sm.cnf" .Values.environment) | indent 4 }}
 ---
 {{- if .Values.caching.publicCacheManagers.enabled }}
 # ============================================================================
 # Public Cache Managers ConfigMap
 # ============================================================================
-# Ehcache XML files for public cache managers loaded from files/config/caching/
+# Ehcache XML files for public cache managers loaded from files/{environment}/config/caching/
 # Each XML file defines a cache manager with its caches.
-# Drop new XML files into files/config/caching/ and they will be auto-discovered.
+# Drop new XML files into files/{environment}/config/caching/ and they will be auto-discovered.
 #
 # Mount location: /opt/softwareag/IntegrationServer/config/Caching/
 # ============================================================================
@@ -512,10 +512,70 @@ metadata:
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
-  {{- $cacheFiles := .Files.Glob "files/config/caching/*.xml" }}
+  {{- $cacheFiles := .Files.Glob (printf "files/%s/config/caching/*.xml" .Values.environment) }}
   {{- range $path, $content := $cacheFiles }}
   {{ base $path }}: |
 {{ $.Files.Get $path | indent 4 }}
   {{- end }}
 {{- end }}
-
+---
+{{- if and .Values.license.enabled .Values.environment }}
+# ============================================================================
+# License Key ConfigMap
+# ============================================================================
+# Environment-specific licenseKey.xml loaded from files/{environment}/license/
+# Mounted at /opt/softwareag/IntegrationServer/instances/default/config/licenseKey.xml
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-license
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  licenseKey.xml: |
+{{ .Files.Get (printf "files/%s/license/licenseKey.xml" .Values.environment) | indent 4 }}
+{{- end }}
+---
+{{- if and .Values.terracotta.enabled .Values.environment }}
+# ============================================================================
+# Terracotta Client License ConfigMap
+# ============================================================================
+# Environment-specific terracotta-license.key loaded from files/{environment}/license/
+# Mounted at /opt/softwareag/IntegrationServer/config/terracotta-license.key
+# Required for MSR to use Terracotta BigMemory features (distributed caching)
+# JVM property -Dcom.tc.productkey.path is set automatically in the StatefulSet
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-tc-license
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  terracotta-license.key: |
+{{ .Files.Get (printf "files/%s/license/terracotta-license.key" .Values.environment) | indent 4 }}
+{{- end }}
+---
+{{- if and .Values.jmsConfig.enabled .Values.environment }}
+# ============================================================================
+# JMS/JNDI Configuration ConfigMap
+# ============================================================================
+# JMS connection aliases and JNDI provider configuration for UM connectivity.
+# Files loaded from files/{environment}/config/jms.cnf and jndi/jndi_JNDI.properties
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-jms-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  jms.cnf: |
+{{ .Files.Get (printf "files/%s/config/jms.cnf" .Values.environment) | indent 4 }}
+  jndi_JNDI.properties: |
+{{ .Files.Get (printf "files/%s/config/jndi/jndi_JNDI.properties" .Values.environment) | indent 4 }}
+{{- end }}

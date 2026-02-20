@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ============================================================================
+     webMethods Integration Server License Key - QA Environment
+     ============================================================================
+     Replace this placeholder with your actual license key XML from IBM/SoftwareAG.
+
+     How to obtain:
+     1. Log in to Empower (https://empower.softwareag.com) or IBM Passport Advantage
+     2. Download your license key for Integration Server / Microservices Runtime
+     3. Replace the contents of this file with the downloaded licenseKey.xml
+
+     File location in container:
+       /opt/softwareag/IntegrationServer/instances/default/config/licenseKey.xml
+
+     IMPORTANT: Each environment (dev, qa, prod) should have its own license key.
+     ============================================================================ -->
+<SoftwareAG_License>
+  <!-- PLACEHOLDER: Replace with actual license XML content -->
+</SoftwareAG_License>

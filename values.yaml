@@ -5,11 +5,32 @@
 global:
   namespace: webmethods
 
+## Environment identifier (drives file selection from files/{environment}/)
+## Set in environment-specific values files: values-dev.yaml, values-qa.yaml, values-prod.yaml
+environment: ""
+
 ## Cluster Label (for multi-cluster monitoring within same namespace)
 ## When deploying multiple MSR clusters in the same namespace, use this label
 ## to differentiate them in Prometheus/Grafana dashboards and alerts.
 ## Example: "business1", "orders", "payments"
 clusterLabel: ""
+
+## StatefulSet Update Strategy
+## RollingUpdate: pods updated in reverse ordinal order during helm upgrade
+## OnDelete: pods only updated when manually deleted
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+
+## Pod Management Policy
+## OrderedReady: pods created/deleted in order (0, 1, 2...)
+## Parallel: all pods created/deleted simultaneously
+podManagementPolicy: OrderedReady
+
+## Termination Grace Period (seconds)
+## Time given to MSR to drain in-flight requests, close JDBC pools, and disconnect from UM
+terminationGracePeriodSeconds: 90
 
 ## Cluster Configuration
 replicaCount: 2  # Start with 2 nodes, can be scaled up
@@ -252,10 +273,30 @@ um:
   csqDrainInOrder: "true"
 
 ## ============================================================================
+## License Key Configuration
+## ============================================================================
+## Mounts the environment-specific licenseKey.xml from files/{environment}/license/
+## into the MSR container at the standard license path.
+## Each environment (dev, qa, prod) can have its own license key file.
+##
+## File location in container:
+##   /opt/softwareag/IntegrationServer/instances/default/config/licenseKey.xml
+license:
+  enabled: false
+
+## ============================================================================
+## JMS/JNDI Configuration (UM JMS Provider)
+## ============================================================================
+## Mounts jms.cnf and jndi_JNDI.properties from files/{environment}/config/
+## into the MSR container for JMS connectivity via Universal Messaging.
+jmsConfig:
+  enabled: false
+
+## ============================================================================
 ## Caching Configuration
 ## ============================================================================
 ## Public Cache Managers - In-memory Ehcache instances loaded from XML files
-## XML files in files/config/caching/*.xml are auto-discovered and mounted
+## XML files in files/{environment}/config/caching/*.xml are auto-discovered and mounted
 ## at /opt/softwareag/IntegrationServer/config/Caching/
 caching:
   publicCacheManagers:
@@ -427,3 +468,12 @@ fileAccessControl:
   # Directories/files with delete permission for pub.file services
   # Example: /tmp
   allowedDeletePaths: ""
+
+## ============================================================================
+## webMethods Cloud / Integration Live Configuration
+## ============================================================================
+## Enables connectivity to webMethods.io Integration / Integration Cloud
+## Configuration files loaded from files/{environment}/integrationlive/
+webMethodsCloud:
+  enabled: false
+  applicationFiles: {}

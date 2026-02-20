@@ -8,6 +8,13 @@ metadata:
 spec:
   serviceName: {{ include "webmethods-msr.fullname" . }}
   replicas: {{ .Values.replicaCount }}
+  podManagementPolicy: {{ .Values.podManagementPolicy | default "OrderedReady" }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy.type | default "RollingUpdate" }}
+    {{- if eq (.Values.updateStrategy.type | default "RollingUpdate") "RollingUpdate" }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.updateStrategy.rollingUpdate.maxUnavailable | default 1 }}
+    {{- end }}
   selector:
     matchLabels:
       {{- include "webmethods-msr.selectorLabels" . | nindent 6 }}
@@ -17,6 +24,7 @@ spec:
         {{- include "webmethods-msr.selectorLabels" . | nindent 8 }}
         component: microservicesruntime
     spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 90 }}
       {{- if and .Values.terracotta.enabled .Values.terracotta.waitForReady }}
       serviceAccountName: {{ include "webmethods-msr.fullname" . }}
       {{- end }}
@@ -331,9 +339,19 @@ spec:
           value: "{{ .Values.logging.sap.jcoTraceLevel }}"
         - name: JCO_TRACE_PATH
           value: "{{ .Values.logging.sap.jcoTracePath | default "/opt/softwareag/IntegrationServer/instances/default/logs" }}"
-        # Pass JCo trace settings to JVM
+        {{- end }}
+        {{- /* Build JAVA_CUSTOM_OPTS dynamically from all sources */}}
+        {{- $javaCustomOpts := list }}
+        {{- if gt (int (.Values.logging.sap.jcoTraceLevel | default 0)) 0 }}
+        {{- $javaCustomOpts = append $javaCustomOpts (printf "-Djco.trace_level=%v -Djco.trace_path=%s" .Values.logging.sap.jcoTraceLevel (.Values.logging.sap.jcoTracePath | default "/opt/softwareag/IntegrationServer/instances/default/logs")) }}
+        {{- end }}
+        {{- if .Values.terracotta.enabled }}
+        {{- $javaCustomOpts = append $javaCustomOpts "-Dcom.tc.productkey.path=/opt/softwareag/IntegrationServer/config/terracotta-license.key" }}
+        {{- end }}
+        {{- if $javaCustomOpts }}
+        # Combined JVM options (JCo trace, Terracotta license, etc.)
         - name: JAVA_CUSTOM_OPTS
-          value: "-Djco.trace_level={{ .Values.logging.sap.jcoTraceLevel }} -Djco.trace_path={{ .Values.logging.sap.jcoTracePath | default "/opt/softwareag/IntegrationServer/instances/default/logs" }}"
+          value: {{ join " " $javaCustomOpts | quote }}
         {{- end }}
         {{- if .Values.azureKeyVault.enabled }}
         envFrom:
@@ -419,7 +437,7 @@ spec:
                   while [ $ELAPSED -lt $MAX_WAIT ]; do
                     if curl -s -f -o /dev/null http://localhost:5555/ 2>/dev/null; then
                       sleep 5
-                      {{- $cacheFiles := .Files.Glob "files/config/caching/*.xml" }}
+                      {{- $cacheFiles := .Files.Glob (printf "files/%s/config/caching/*.xml" .Values.environment) }}
                       {{- range $path, $content := $cacheFiles }}
                       curl -s -u {{ $.Values.caching.publicCacheManagers.adminUser }}:{{ $.Values.caching.publicCacheManagers.adminPassword }} -X POST "http://localhost:5555/WmRoot/settings-cache.dsp" -d "cacheManagerName={{ trimSuffix ".xml" (base $path) }}&operation=cache_manager_start" > /dev/null 2>&1 || true
                       {{- end }}
@@ -530,6 +548,31 @@ spec:
           mountPath: /opt/softwareag/IntegrationServer/instances/default/config/aclmap_sm.cnf
           subPath: aclmap_sm.cnf
           readOnly: true
+        {{- /* License Key (environment-specific licenseKey.xml) */}}
+        {{- if .Values.license.enabled }}
+        - name: license-key
+          mountPath: /opt/softwareag/IntegrationServer/instances/default/config/licenseKey.xml
+          subPath: licenseKey.xml
+          readOnly: true
+        {{- end }}
+        {{- /* JMS/JNDI configuration for UM connectivity */}}
+        {{- if .Values.jmsConfig.enabled }}
+        - name: jms-config
+          mountPath: /opt/softwareag/IntegrationServer/config/jms.cnf
+          subPath: jms.cnf
+          readOnly: true
+        - name: jms-config
+          mountPath: /opt/softwareag/IntegrationServer/config/jndi/jndi_JNDI.properties
+          subPath: jndi_JNDI.properties
+          readOnly: true
+        {{- end }}
+        {{- /* Terracotta Client License (required for BigMemory features) */}}
+        {{- if .Values.terracotta.enabled }}
+        - name: tc-license
+          mountPath: /opt/softwareag/IntegrationServer/config/terracotta-license.key
+          subPath: terracotta-license.key
+          readOnly: true
+        {{- end }}
         {{- /* SAP SNC External Credentials (cred_v2 + PSE from K8s Secret) */}}
         {{- if and .Values.sapAdapter .Values.sapAdapter.snc .Values.sapAdapter.snc.externalCredentials }}
         - name: sap-snc-credentials
@@ -546,8 +589,8 @@ spec:
           mountPath: /opt/softwareag/IntegrationServer/config/integrationlive/connections.cnf
           subPath: connections.cnf
           readOnly: true
-        {{- /* Mount application files from files/integrationlive/applications/ */}}
-        {{- $appFiles := .Files.Glob "files/integrationlive/applications/*.cnf" }}
+        {{- /* Mount application files from files/{environment}/integrationlive/applications/ */}}
+        {{- $appFiles := .Files.Glob (printf "files/%s/integrationlive/applications/*.cnf" .Values.environment) }}
         {{- range $path, $content := $appFiles }}
         - name: cloud-config-apps
           mountPath: /opt/softwareag/IntegrationServer/config/integrationlive/applications/{{ base $path }}
@@ -619,6 +662,30 @@ spec:
           items:
           - key: aclmap_sm.cnf
             path: aclmap_sm.cnf
+      {{- /* License Key volume */}}
+      {{- if .Values.license.enabled }}
+      - name: license-key
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-license
+          items:
+          - key: licenseKey.xml
+            path: licenseKey.xml
+      {{- end }}
+      {{- /* Terracotta Client License volume */}}
+      {{- if .Values.terracotta.enabled }}
+      - name: tc-license
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-tc-license
+          items:
+          - key: terracotta-license.key
+            path: terracotta-license.key
+      {{- end }}
+      {{- /* JMS/JNDI configuration volume */}}
+      {{- if .Values.jmsConfig.enabled }}
+      - name: jms-config
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-jms-config
+      {{- end }}
       {{- /* SAP SNC External Credentials volume (cred_v2 + PSE from K8s Secret) */}}
       {{- if and .Values.sapAdapter .Values.sapAdapter.snc .Values.sapAdapter.snc.externalCredentials }}
       - name: sap-snc-credentials

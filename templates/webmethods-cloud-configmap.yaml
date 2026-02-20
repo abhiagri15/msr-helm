@@ -8,8 +8,8 @@
 # Files are mounted to: /opt/softwareag/IntegrationServer/config/integrationlive/
 #
 # Configuration approach:
-# - accounts.cnf and connections.cnf are loaded from files/integrationlive/
-# - Application .cnf files are loaded from files/integrationlive/applications/
+# - accounts.cnf and connections.cnf are loaded from files/{environment}/integrationlive/
+# - Application .cnf files are loaded from files/{environment}/integrationlive/applications/
 # - All files preserve original format, timestamps, and state data
 # ============================================================================
 apiVersion: v1
@@ -23,25 +23,25 @@ data:
   # ============================================================================
   # accounts.cnf - Tenant Account Configuration
   # ============================================================================
-  # Loaded from files/integrationlive/accounts.cnf
+  # Loaded from files/{environment}/integrationlive/accounts.cnf
   # Contains: default, QA io, SMUD IC, Dev io accounts
   accounts.cnf: |
-{{ .Files.Get "files/integrationlive/accounts.cnf" | indent 4 }}
+{{ .Files.Get (printf "files/%s/integrationlive/accounts.cnf" .Values.environment) | indent 4 }}
 
   # ============================================================================
   # connections.cnf - Tenant Connection Configuration
   # ============================================================================
-  # Loaded from files/integrationlive/connections.cnf
+  # Loaded from files/{environment}/integrationlive/connections.cnf
   # Contains: SMUD IC, default, QA io, Dev io connections
   connections.cnf: |
-{{ .Files.Get "files/integrationlive/connections.cnf" | indent 4 }}
+{{ .Files.Get (printf "files/%s/integrationlive/connections.cnf" .Values.environment) | indent 4 }}
 
   # ============================================================================
   # Application Configuration Files
   # ============================================================================
-  # Loaded from files/integrationlive/applications/ directory
+  # Loaded from files/{environment}/integrationlive/applications/ directory
   # ============================================================================
-  {{- $appFiles := .Files.Glob "files/integrationlive/applications/*.cnf" }}
+  {{- $appFiles := .Files.Glob (printf "files/%s/integrationlive/applications/*.cnf" .Values.environment) }}
   {{- range $path, $content := $appFiles }}
   {{ base $path }}: |
 {{ $.Files.Get $path | indent 4 }}

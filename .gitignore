@@ -1,4 +1,7 @@
 # Helm 
 *.tgz 
 *.lock 
-secrets.yaml 
+secrets.yaml
+
+# Claude Code
+.claude/

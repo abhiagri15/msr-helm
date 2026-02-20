@@ -1,0 +1,29 @@
+<ehcache name="LookupCache">
+    <diskStore path="./cacheStore/LookupCache"/>
+    <defaultCache
+        maxElementsInMemory="500"
+        eternal="false"
+        timeToIdleSeconds="300"
+        timeToLiveSeconds="600"
+        overflowToDisk="false"
+        memoryStoreEvictionPolicy="LRU"/>
+    <cache name="CountryCodes"
+        maxElementsInMemory="500"
+        eternal="true"
+        overflowToDisk="false"
+        memoryStoreEvictionPolicy="LRU"/>
+    <cache name="CurrencyRates"
+        maxElementsInMemory="200"
+        eternal="false"
+        timeToIdleSeconds="60"
+        timeToLiveSeconds="300"
+        overflowToDisk="false"
+        memoryStoreEvictionPolicy="LFU"/>
+    <cache name="ProductCatalog"
+        maxElementsInMemory="10000"
+        eternal="false"
+        timeToIdleSeconds="600"
+        timeToLiveSeconds="3600"
+        overflowToDisk="false"
+        memoryStoreEvictionPolicy="LRU"/>
+</ehcache>

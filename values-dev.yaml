@@ -4,12 +4,18 @@
 global:
   namespace: webmethods
 
+environment: dev
+
 # Cluster label for multi-cluster monitoring within same namespace
 # Used by Prometheus ServiceMonitors and Grafana dashboards to differentiate clusters
 clusterLabel: "dev"
 
 replicaCount: 2
 
+## Image Configuration
+## CI/CD pipeline overrides image.tag with immutable SHA tag via:
+##   --set image.tag=11.1.0.6-sha-<gitSha>
+## The tag below is a fallback for manual deploys only.
 image:
   repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
   tag: "11.1.0.6-dev"
@@ -250,6 +256,25 @@ healthProbes:
     timeoutSeconds: 5
     failureThreshold: 3
 
+# ============================================================================
+# License Configuration (files/dev/license/)
+# ============================================================================
+# Set enabled: true ONLY after placing your real license files.
+# Mounting placeholder files will cause startup errors.
+#
+# Steps to enable:
+#   1. Replace files/dev/license/licenseKey.xml with your actual IS license
+#   2. Replace files/dev/license/terracotta-license.key with your actual TC license
+#   3. Set license.enabled: true below
+#   4. Redeploy: helm upgrade wm-msr ./msr-helm -f values-dev.yaml
+# ============================================================================
+license:
+  enabled: false
+
+# JMS/JNDI Configuration (UM JMS Provider)
+jmsConfig:
+  enabled: true
+
 # Universal Messaging Configuration
 # Passwords stored in Azure Key Vault: dev-um-business-password, dev-um-logs-password
 um:
@@ -373,7 +398,7 @@ azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "b5ed39af-9682-4049-b8a8-c013f5bfc395"  # Azure Key Vault Secrets Provider identity Client ID (webmethods-cluster)
+  clientId: "52d37338-13ab-4a9e-982a-3678e86bc980"  # Azure Key Vault Secrets Provider identity Client ID (webmethods-cluster)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault

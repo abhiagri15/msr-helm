@@ -54,9 +54,21 @@ Enterprise-grade Helm chart for deploying **webMethods Microservices Runtime (MS
 - **Read-Only Volume Mounts** - All ConfigMap/Secret mounts explicitly set to read-only
 - **Init Container Hardening** - Root init container runs with minimal capabilities (CHOWN, DAC_OVERRIDE only)
 
+### JMS/JNDI (Universal Messaging)
+
+- **JMS Configuration** - Environment-specific `jms.cnf` mounted at `/opt/softwareag/IntegrationServer/config/jms.cnf`
+- **JNDI Properties** - Environment-specific `jndi_JNDI.properties` mounted at `/opt/softwareag/IntegrationServer/config/jndi/jndi_JNDI.properties`
+- **Toggle per Environment** - Controlled via `jmsConfig.enabled` in values files
+
+### License Management
+
+- **IS License** - Environment-specific `licenseKey.xml` mounted via ConfigMap when `license.enabled: true`
+- **Terracotta Client License** - `terracotta-license.key` auto-mounted when `terracotta.enabled: true` with JVM property `-Dcom.tc.productkey.path`
+- **Toggle per Environment** - Licenses disabled by default; enable only after placing real license files
+
 ### Caching
 
-- **Public Cache Managers** - Auto-discovered Ehcache XML configs from `files/config/caching/`
+- **Public Cache Managers** - Auto-discovered Ehcache XML configs from `files/{environment}/config/caching/`
 - **Auto-Start on Boot** - Cache managers automatically started when MSR pods come up via DSP admin endpoint
 - **Terracotta Integration** - Distributed caching with Terracotta BigMemory
 
@@ -146,6 +158,7 @@ kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
+| `environment` | Environment identifier (`dev`, `qa`, `prod`) — drives file selection from `files/{environment}/` | `""` |
 | `replicaCount` | Number of MSR replicas | `2` |
 | `image.repository` | Container image repository | `abiwebmethods.azurecr.io/webmethods-microservicesruntime` |
 | `image.tag` | MSR version tag | `11.1.0.6-postgresql-v2` |
@@ -155,9 +168,12 @@ kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
 | `jdbcAdapter.enabled` | Enable JDBC adapter connections | `false` |
 | `sapAdapter.enabled` | Enable SAP adapter connections/listeners | `false` |
 | `sapAdapter.snc.externalCredentials` | Mount SNC cred_v2/PSE from K8s Secret (for QA/Prod) | `false` |
+| `license.enabled` | Enable IS license mounting from `files/{env}/license/licenseKey.xml` | `false` |
+| `jmsConfig.enabled` | Enable JMS/JNDI configuration for UM connectivity | `false` |
 | `um.enabled` | Enable Universal Messaging | `false` |
 | `terracotta.enabled` | Enable Terracotta caching | `false` |
 | `caching.publicCacheManagers.enabled` | Enable public Ehcache cache managers | `false` |
+| `webMethodsCloud.enabled` | Enable webMethods Cloud / Integration Live connectivity | `false` |
 | `fileAccessControl.enabled` | Enable file access control for pub.file | `false` |
 | `packageConfigs.enabled` | Enable package-specific app.properties | `false` |
 | `securityContext.pod.runAsUser` | Pod-level run-as user (sagadmin) | `1724` |
@@ -188,30 +204,39 @@ Adapter configurations are separated into dedicated files for better maintainabi
 
 ### Files Directory Structure
 
-The `files/` directory contains configuration files that are mounted into the MSR container:
+The `files/` directory contains **environment-specific** configuration files mounted into the MSR container. The `environment` value (`dev`, `qa`, `prod`) drives which directory is used:
 
 ```
 files/
-├── config/
-│   ├── aclmap_sm.cnf                   # ACL map configuration
-│   └── caching/                        # Public Cache Manager XML configs (auto-discovered)
-│       ├── OrderCache.xml              # ActiveOrders, OrderHistory caches
-│       ├── SessionCache.xml            # UserSessions, AuthTokens caches
-│       └── LookupCache.xml            # CountryCodes, CurrencyRates, ProductCatalog caches
-└── integrationlive/                    # webMethods Cloud (Integration Cloud) config
-    ├── accounts.cnf                    # Cloud account definitions
-    ├── connections.cnf                 # Cloud connection settings
-    └── applications/                   # Application-specific config files
-        ├── <app1>.cnf                  # One file per deployed application
-        ├── <app2>.cnf
-        └── ... (45+ application files)
+├── dev/
+│   ├── config/
+│   │   ├── aclmap_sm.cnf                   # ACL map configuration
+│   │   ├── jms.cnf                         # JMS connection aliases (UM)
+│   │   ├── jndi/
+│   │   │   └── jndi_JNDI.properties        # JNDI provider configuration
+│   │   └── caching/                        # Public Cache Manager XML configs
+│   │       ├── OrderCache.xml
+│   │       ├── SessionCache.xml
+│   │       └── LookupCache.xml
+│   ├── license/                            # License files (placeholders until real licenses)
+│   │   ├── licenseKey.xml                  # IS/MSR license key
+│   │   └── terracotta-license.key          # Terracotta BigMemory client license
+│   └── integrationlive/                    # webMethods Cloud config
+│       ├── accounts.cnf
+│       ├── connections.cnf
+│       └── applications/                   # 45+ application config files
+│           └── *.cnf
+├── qa/                                     # Same structure as dev (QA-specific)
+└── prod/                                   # Same structure as dev (Prod-specific)
 ```
 
-| Directory | Purpose | Mount Path |
-|-----------|---------|------------|
-| `files/config/caching/` | Public Cache Manager Ehcache XMLs | `/opt/softwareag/IntegrationServer/config/Caching/` (copied by postStart) |
-| `files/config/aclmap_sm.cnf` | ACL map configuration | `/opt/softwareag/IntegrationServer/instances/default/config/aclmap_sm.cnf` |
-| `files/integrationlive/` | webMethods Cloud configuration | `/opt/softwareag/IntegrationServer/config/integrationlive/` |
+| File/Directory | Purpose | Mount Path |
+|----------------|---------|------------|
+| `files/{env}/config/aclmap_sm.cnf` | ACL map configuration | `.../instances/default/config/aclmap_sm.cnf` |
+| `files/{env}/config/jms.cnf` | JMS connection aliases | `.../config/jms.cnf` |
+| `files/{env}/config/jndi/jndi_JNDI.properties` | JNDI provider config | `.../config/jndi/jndi_JNDI.properties` |
+| `files/{env}/config/caching/*.xml` | Public Cache Manager Ehcache XMLs | `.../config/Caching/` (copied by postStart) |
+| `files/{env}/integrationlive/` | webMethods Cloud configuration | `.../config/integrationlive/` |
 
 ---
 
@@ -250,7 +275,7 @@ webMethodsCloud:
 
 ### 4. Update accounts.cnf
 
-In `files/integrationlive/accounts.cnf`, set the password to use environment variable:
+In `files/{environment}/integrationlive/accounts.cnf`, set the password to use environment variable:
 
 ```properties
 accounts.Dev\ io.password=$env{WMCLOUD_DEV_IO_PASSWORD}
@@ -426,7 +451,20 @@ For complete architecture diagrams, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 
 ## Version History
 
-### Current Version: 2.5.0 (February 2026)
+### Current Version: 2.7.0 (February 2026)
+
+- **IS License Management** - Environment-specific `licenseKey.xml` mounted via ConfigMap when `license.enabled: true`
+- **Terracotta Client License** - `terracotta-license.key` auto-mounted when `terracotta.enabled: true` with JVM property `-Dcom.tc.productkey.path`
+- **Dynamic JAVA_CUSTOM_OPTS** - Refactored from single conditional to multi-source list combining JCo trace, Terracotta license, and future JVM properties
+- **License Safety Toggle** - All licenses disabled by default (`license.enabled: false`); enable only after replacing placeholder files with real licenses
+
+### 2.6.0 (February 2026)
+
+- **Environment-Specific Files** - All static files (aclmap, caching XMLs, integrationlive) moved to `files/{environment}/` directories (`dev`, `qa`, `prod`)
+- **JMS/JNDI Configuration** - `jms.cnf` and `jndi_JNDI.properties` mounted via ConfigMap when `jmsConfig.enabled: true` for UM connectivity
+- **Environment Parameter** - New `environment` value drives which `files/{environment}/` directory is used at deploy time
+
+### 2.5.0 (February 2026)
 
 - **QA Adapter Configurations** - Added `values-jdbc-adapter-qa.yaml` and `values-sap-adapter-qa.yaml` for QA environment
 - **SAP SNC External Credentials** - QA/Prod use K8s Secret volume mount to overlay per-environment cred_v2 and PSE files (`sapAdapter.snc.externalCredentials`)
@@ -436,7 +474,7 @@ For complete architecture diagrams, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 
 - **Container Security Hardening** - Pod/container securityContext with sagadmin (UID=1724) enforcement, dropped capabilities, privilege escalation prevention per IBM/SoftwareAG best practices
 - **Read-Only Volume Mounts** - All ConfigMap/Secret mounts explicitly set `readOnly: true`
-- **Public Cache Managers** - Auto-discovered Ehcache XML configs from `files/config/caching/` with auto-start on pod boot
+- **Public Cache Managers** - Auto-discovered Ehcache XML configs from `files/{environment}/config/caching/` with auto-start on pod boot
 - **Init Container Hardening** - Root init container restricted to CHOWN and DAC_OVERRIDE capabilities only
 - **Configurable Security Context** - Full `securityContext.pod` and `securityContext.container` blocks configurable per environment via values files
 
@@ -468,4 +506,5 @@ This Helm chart is provided for use with licensed webMethods products from Softw
 ---
 
 *Maintained by: webMethods Architecture Team*
+*Chart Version: 2.7.0*
 *Last Updated: February 2026*

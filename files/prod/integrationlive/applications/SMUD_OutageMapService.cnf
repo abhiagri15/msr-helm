@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.data.ISMemDataImpl">
+    <value name="name">SMUD_OutageMapService</value>
+    <value name="description">Outage map service</value>
+    <null name="lastUploadedTime"/>
+    <number name="lastSavedTime" type="java.lang.Long">1660235964554</number>
+    <array name="packages" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="package">SmOutageMapService</value>
+        <array name="details" type="record" depth="1">
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.system.oms.flows:communityResponse</value>
+            <value name="displayName">communityResponse</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+          <record javaclass="com.wm.data.ISMemDataImpl">
+            <value name="serviceName">smud.system.oms.flows:outageResponse</value>
+            <value name="displayName">outageResponse</value>
+            <jboolean name="isShared">true</jboolean>
+            <jboolean name="useBatch">false</jboolean>
+          </record>
+        </array>
+      </record>
+    </array>
+    <array name="connections" type="record" depth="1">
+    </array>
+    <array name="tenantAliases" type="record" depth="1">
+    </array>
+  </record>
+</IDataXMLCoder>

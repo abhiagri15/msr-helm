@@ -1,0 +1,1212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.data.ISMemDataImpl">
+    <array name="JMSConfiguration" type="record" depth="1">
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">DEFAULT_IS_JMS_CONNECTION</value>
+        <value name="description">system generated JMS connection alias</value>
+        <value name="clientID">DEFAULT_IS_JMS_CLIENT</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.DEFAULT_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">0</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmPubConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">Dispatch_IS_JMS_CONNECTION</value>
+        <value name="description">Used for Dispatcher Framework process</value>
+        <value name="clientID">SMUD</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.Dispatch_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SMUDDispatchConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">EAS_IS_JMS_CONNECTION</value>
+        <value name="description">Put meter, Get Meter and Put Schedule Opertions for the EAS System (MCG is the vendor).</value>
+        <value name="clientID">EAS</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.EAS_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmEASConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <value name="um_producerIncludedStrings"></value>
+        <value name="um_consumerIncludedStrings"></value>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">EventBus</value>
+        <value name="description">EDA EventBus</value>
+        <value name="clientID">EventBusClient</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.EventBus</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">0</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">EventBusJndiProvider</value>
+        <value name="jndi_connectionFactoryLookupName">EventFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">PE_NONTRANSACTIONAL_ALIAS</value>
+        <value name="description">system generated JMS connection alias</value>
+        <value name="clientID">DEFAULT_IS_JMS_CLIENT</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.PE_NONTRANSACTIONAL_ALIAS</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">EventFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SMUDDurable_IS_JMS_CONNECTION</value>
+        <value name="description">SMUD durable connection</value>
+        <value name="clientID">SMUD</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SMUDDurable_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">smPubDurableConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SMUD_APP_IS_JMS_CONNECTION</value>
+        <value name="description">JMS connection for mobile app related jobs</value>
+        <value name="clientID">SMUD_APP</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SMUD_APP_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmudAppConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SMUD_IS_JMS_CONNECTION</value>
+        <value name="description">SMUD generated JMS connection alias</value>
+        <value name="clientID">SMUD</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SMUD_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmPubConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SMUD_IS_LOGGGING_JMS_CONNECTION</value>
+        <value name="description">connection for logging services</value>
+        <value name="clientID">SMUDLogging</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SMUD_IS_LOGGGING_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">true</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">smLoggngDurableConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <value name="um_producerIncludedStrings"></value>
+        <value name="um_consumerIncludedStrings"></value>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmAPI_IS_JMS_CONNECTION</value>
+        <value name="description">	SMUD API JMS connection alias</value>
+        <value name="clientID">SmAPI</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmAPI_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">true</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">5</number>
+        <number name="producerRetryInterval" type="java.lang.Long">6000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmAPIConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmAS_IS_JMS_CONNECTION</value>
+        <value name="description">Admin Services JMS connection alias</value>
+        <value name="clientID">SmAS</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmAS_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmASConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmAssets_IS_JMS_CONNECTION</value>
+        <value name="description">SMUD JMS connection for Assets</value>
+        <value name="clientID">SMUD</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmAssets_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">smPubDurableConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmCustomerUsage_IS_JMS_CONNECTION</value>
+        <value name="description">JMS connection for Usage</value>
+        <value name="clientID">SmCustomerUsage</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmCustomerUsage_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">true</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmCustomerUsageConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">true</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <value name="um_producerIncludedStrings"></value>
+        <value name="um_consumerIncludedStrings"></value>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmGS_IS_JMS_CONNECTION</value>
+        <value name="description">General Services JMS connection alias</value>
+        <value name="clientID">SmGS</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmGS_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmGSConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmOCMPref_IS_JMS_CONNECTION</value>
+        <value name="description">SmOCMPref_IS_JMS_CONNECTION</value>
+        <value name="clientID">SmOCMPreferences</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmOCMPref_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">true</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmOCMPrefConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <value name="um_producerIncludedStrings"></value>
+        <value name="um_consumerIncludedStrings"></value>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmOutboundComm_IS_JMS_CONNECTION</value>
+        <value name="description">SmOutboundComm JMS Connection</value>
+        <value name="clientID">SmOutboundComm</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmOutboundComm_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">5</number>
+        <number name="producerRetryInterval" type="java.lang.Long">6000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmAPIConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmPG_IS_JMS_CONNECTION</value>
+        <value name="description">SMUD Payment Gateway JMS connection alias</value>
+        <value name="clientID">SmPG</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmPG_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmPGConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmPSGO_IS_JMS_CONNECTION</value>
+        <value name="description">Power Systems and Grid Operations JMS connections alias</value>
+        <value name="clientID"></value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmPSGO_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmPSGOConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmSAPCDC_IS_JMS_CONNECTION</value>
+        <value name="description">connection for CDC integration</value>
+        <value name="clientID">SmSAPCDC</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmSAPCDC_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">true</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmSAPCDCConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">true</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <value name="um_producerIncludedStrings"></value>
+        <value name="um_consumerIncludedStrings"></value>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmSAPMarketingCloud_IS_JMS_CONNECTION</value>
+        <value name="description">SMUD SMC connection</value>
+        <value name="clientID">SMUD</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmSAPMarketingCloud_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">true</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmSAPMarketingCloudConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">true</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <value name="um_producerIncludedStrings"></value>
+        <value name="um_consumerIncludedStrings"></value>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmSESDurable_IS_JMS_CONNECTION</value>
+        <value name="description">SES durable connection factory</value>
+        <value name="clientID">SmSES</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmSESDurable_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmSESDurableConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmSES_IS_JMS_CONNECTION</value>
+        <value name="description">SMUD Enterprise Services JMS connection alias</value>
+        <value name="clientID">SmSES</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmSES_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmSESConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmSMS_IS_JMS_CONNECTION</value>
+        <value name="description">JMS connection for SMS opt-in</value>
+        <value name="clientID">SMUD</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmSMS_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmSMSConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmSharePoint_IS_JMS_CONNECTION</value>
+        <value name="description">JMS connection for SharePoint</value>
+        <value name="clientID">SmSharePoint</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmSharePoint_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">true</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmSharePointConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">true</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <value name="um_producerIncludedStrings"></value>
+        <value name="um_consumerIncludedStrings"></value>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmSystemDSM_IS_JMS_CONNECTION</value>
+        <value name="description">SmSystemDSM JMS Commection</value>
+        <value name="clientID">SmSystemDSM</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmSystemDSM_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmSystemDSMConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">true</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <value name="um_producerIncludedStrings"></value>
+        <value name="um_consumerIncludedStrings"></value>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmVendorTFCC_IS_JMS_CONNECTION</value>
+        <value name="description">SMUD TFCC JMS Connection</value>
+        <value name="clientID">SmVendorTFCC</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmVendorTFCC_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">true</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">5</number>
+        <number name="producerRetryInterval" type="java.lang.Long">6000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmAPIConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmVendor_IS_JMS_CONNECTION</value>
+        <value name="description">Connection alias for SmVendor usecases</value>
+        <value name="clientID">SmVendors</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmVendor_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">SmVendors</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+      <record javaclass="com.wm.data.ISMemDataImpl">
+        <value name="aliasName">SmWorkorders_IS_JMS_CONNECTION</value>
+        <value name="description">SMUD JMS connection for SmWorkorders</value>
+        <value name="clientID">SMUD</value>
+        <value name="user"></value>
+        <value name="handle">wm.is.admin.jmsConnectionAlias.SmWorkorders_IS_JMS_CONNECTION</value>
+        <value name="classLoader">INTEGRATION_SERVER</value>
+        <value name="enabled">true</value>
+        <value name="csqSize">-1</value>
+        <value name="csqDrainInOrder">true</value>
+        <value name="optTempQueueCreate">true</value>
+        <value name="transactionType">0</value>
+        <value name="systemGenerated">false</value>
+        <value name="manageDestinations">true</value>
+        <value name="allowNewConnectionPerTrigger">false</value>
+        <value name="producerCachingMode">0</value>
+        <value name="producerSessionPoolSize">0</value>
+        <value name="producerSessionPoolMinSize">0</value>
+        <value name="cacheProducersPoolSize">0</value>
+        <value name="cacheProducersPoolMinSize">0</value>
+        <value name="cacheProducersQueueList"></value>
+        <value name="cacheProducersTopicList"></value>
+        <number name="poolTimeout" type="java.lang.Integer">60000</number>
+        <number name="producerMaxRetryAttempts" type="java.lang.Long">0</number>
+        <number name="producerRetryInterval" type="java.lang.Long">1000</number>
+        <jboolean name="allowReplyToConsumer">false</jboolean>
+        <value name="associationType">0</value>
+        <value name="jndi_jndiAliasName">JNDI</value>
+        <value name="jndi_connectionFactoryLookupName">smPubDurableConnectionFactory</value>
+        <value name="jndi_connectionFactoryUpdateType">NONE</value>
+        <number name="jndi_connectionFactoryPollingInterval" type="java.lang.Integer">0</number>
+        <jboolean name="jndi_enableFollowTheMaster">false</jboolean>
+        <jboolean name="jndi_automaticallyCreateUMAdminObjects">false</jboolean>
+        <number name="um_loggingOutput" type="java.lang.Integer">0</number>
+        <jboolean name="um_producerMessageTracking">false</jboolean>
+        <jboolean name="um_consumerMessageTracking">false</jboolean>
+        <null name="um_producerIncludedStrings"/>
+        <null name="um_consumerIncludedStrings"/>
+        <value name="providerName">Universal Messaging</value>
+        <value name="providerVersion">10.15.0 Build 10.15.0.22.1252 September 19 2024</value>
+        <number name="providerMajorVersion" type="java.lang.Integer">10</number>
+        <number name="providerMinorVersion" type="java.lang.Integer">15</number>
+      </record>
+    </array>
+  </record>
+</IDataXMLCoder>
