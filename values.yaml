@@ -285,6 +285,14 @@ license:
   enabled: false
 
 ## ============================================================================
+## MWS Single Sign-On (SSO) Configuration
+## ============================================================================
+## SAML Resolver URL for Single Sign-On with My webMethods Server.
+## This URL is environment-specific (points to the MWS instance for each env).
+## Property: watt.server.auth.samlResolver
+mwsSamlResolverUrl: ""
+
+## ============================================================================
 ## JMS/JNDI Configuration (UM JMS Provider)
 ## ============================================================================
 ## Mounts jms.cnf and jndi_JNDI.properties from files/{environment}/config/

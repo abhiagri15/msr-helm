@@ -366,6 +366,15 @@ data:
     # Enable detailed thread logging
     # Configurable via values.yaml: logging.threadDump
     watt.server.threadDump={{ .Values.logging.threadDump | default false }}
+
+    {{- if .Values.mwsSamlResolverUrl }}
+    # ============================================================================
+    # MWS Single Sign-On (SSO) Configuration
+    # ============================================================================
+    # SAML Resolver URL for SSO with My webMethods Server
+    # Configurable via values.yaml: mwsSamlResolverUrl (environment-specific)
+    watt.server.auth.samlResolver={{ .Values.mwsSamlResolverUrl }}
+    {{- end }}
 ---
 {{- if .Values.terracotta.enabled }}
 apiVersion: v1

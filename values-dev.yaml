@@ -6,6 +6,9 @@ global:
 
 environment: dev
 
+# MWS Single Sign-On - SAML Resolver URL (Dev MWS instance)
+mwsSamlResolverUrl: "http://mws-dev.example.com:8585/services/SAML"
+
 # Cluster label for multi-cluster monitoring within same namespace
 # Used by Prometheus ServiceMonitors and Grafana dashboards to differentiate clusters
 clusterLabel: "dev"

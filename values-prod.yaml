@@ -6,6 +6,9 @@ global:
 
 environment: prod
 
+# MWS Single Sign-On - SAML Resolver URL (Prod MWS instance)
+mwsSamlResolverUrl: "http://mws-prod.example.com:8585/services/SAML"
+
 replicaCount: 3
 
 ## Image Configuration

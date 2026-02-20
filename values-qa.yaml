@@ -6,6 +6,9 @@ global:
 
 environment: qa
 
+# MWS Single Sign-On - SAML Resolver URL (QA MWS instance)
+mwsSamlResolverUrl: "http://mws-qa.example.com:8585/services/SAML"
+
 replicaCount: 3
 
 ## Image Configuration

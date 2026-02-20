@@ -1407,6 +1407,37 @@ sapAdapter:
 
 > **Note**: The PSE filename is tied to the SNC identity (e.g., `esbdev.pse` for Dev, potentially different for QA/Prod). All files in the directory are included in the Secret automatically.
 
+### MWS Single Sign-On (SAML Resolver URL)
+
+The **MWS SAML Resolver URL** (`watt.server.auth.samlResolver`) configures Single Sign-On between Integration Server and My webMethods Server. This URL is environment-specific since each environment points to a different MWS instance.
+
+**Configuration in values-{env}.yaml:**
+```yaml
+# MWS Single Sign-On - SAML Resolver URL
+mwsSamlResolverUrl: "http://mws-dev.example.com:8585/services/SAML"
+```
+
+**Environment values:**
+
+| Environment | Example URL |
+|-------------|-------------|
+| Dev | `http://mws-dev.example.com:8585/services/SAML` |
+| QA | `http://mws-qa.example.com:8585/services/SAML` |
+| Prod | `http://mws-prod.example.com:8585/services/SAML` |
+
+**How it works:**
+- The value is injected into the `server.cnf` ConfigMap as `watt.server.auth.samlResolver`
+- When empty (default in `values.yaml`), the property is omitted entirely
+- The IS postStart hook appends `server.cnf` properties, overriding the baked-in default
+- Visible in IS Admin at: **Settings > Resources > Single Sign-On with My webMethods Server**
+
+**Verification:**
+```bash
+# Check server.cnf contains the SAML resolver URL
+kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+  grep samlResolver /opt/softwareag/IntegrationServer/instances/default/config/server.cnf
+```
+
 ### File Access Control Configuration
 
 File access control restricts which directories the `pub.file` services can read, write, or delete.
