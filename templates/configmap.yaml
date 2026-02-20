@@ -597,7 +597,5 @@ metadata:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
   {{- $sncFiles := .Files.Glob (printf "files/%s/sap_crypto/sec/*" .Values.environment) }}
-  {{- range $path, $content := $sncFiles }}
-  {{ base $path }}: {{ $content | b64enc }}
-  {{- end }}
+{{ ($sncFiles).AsSecrets | indent 2 }}
 {{- end }}
