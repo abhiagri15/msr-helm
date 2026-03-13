@@ -255,7 +255,7 @@ autoscaling:
   minReplicas: 3
   maxReplicas: 8
   targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: false
 
 # ============================================================================
 # Azure Key Vault Integration
