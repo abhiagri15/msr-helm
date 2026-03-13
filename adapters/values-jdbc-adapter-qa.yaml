@@ -9,14 +9,14 @@
 #     -f values-qa.yaml \
 #     -f adapters/values-jdbc-adapter-qa.yaml \
 #     -f adapters/values-sap-adapter-qa.yaml \
-#     -n webmethods-qa
+#     -n wm-qa
 #
 # Configuration approach:
 #   - username: Stored in values file (not sensitive)
 #   - password: Retrieved from Azure Key Vault via secretName
 #   - Other connection details: Stored in values file
 #
-# Password stored in Azure Key Vault: test-jdbcadapter-<connection>-password
+# Password stored in Azure Key Vault: qa-jdbcadapter-<connection>-password
 # ============================================================================
 
 jdbcAdapter:
@@ -34,12 +34,12 @@ jdbcAdapter:
       driverAlias: "Microsoft SQL Server Driver"
       dataSourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
       # Connection details
-      serverName: "wm-sql-abi-qa.database.windows.net"
+      serverName: "wm-sql-abi-dev.database.windows.net"
       databaseName: "isinternal"
       portNumber: 1433
       networkProtocol: "tcp"
       username: "wmadmin"
-      secretName: "jdbcadapter-mssql-password"         # Key Vault: test-jdbcadapter-mssql-password
+      secretName: "jdbcadapter-mssql-password"         # Key Vault: qa-jdbcadapter-mssql-password
       passwordEnvVar: "JDBC_ADAPTER_MSSQL_PASSWORD"
       otherProperties: "encrypt=true;trustServerCertificate=true;loginTimeout=30"
       transactionType: "LOCAL_TRANSACTION"

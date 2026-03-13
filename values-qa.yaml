@@ -101,7 +101,7 @@ jdbcPool:
 # JDBC ADAPTER Configuration (WmJDBCAdapter for Integration Services)
 # ============================================================================
 # JDBC Adapter connections are used by business integration services
-# Azure SQL Database: wm-sql-abi-qa.database.windows.net
+# Azure SQL Database: wm-sql-abi-dev.database.windows.net
 # Credentials stored in Azure Key Vault: qa-jdbc-adapter-url, qa-jdbc-adapter-username, qa-jdbc-adapter-password
 # Each connection can have different pool sizing and transaction settings
 jdbcAdapter:
@@ -116,7 +116,7 @@ jdbcAdapter:
       driverAlias: "Microsoft SQL Server Driver"
       dataSourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
       # Azure SQL Database connection details - credentials from Azure Key Vault
-      serverName: "wm-sql-abi-qa.database.windows.net"
+      serverName: "wm-sql-abi-dev.database.windows.net"
       databaseName: "isinternal"
       portNumber: 1433
       networkProtocol: "tcp"
