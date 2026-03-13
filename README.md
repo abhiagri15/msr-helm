@@ -86,7 +86,7 @@ Enterprise-grade Helm chart for deploying **webMethods Microservices Runtime (MS
 ### 1. Create Namespace
 
 ```bash
-kubectl create namespace webmethods
+kubectl create namespace wm-dev
 ```
 
 ### 2. Configure Azure Key Vault Secrets
@@ -123,7 +123,7 @@ azureKeyVault:
 ```bash
 # Deploy with all adapters (JDBC + SAP)
 helm upgrade --install wm-msr . \
-  --namespace webmethods \
+  --namespace wm-dev \
   --values values.yaml \
   --values values-dev.yaml \
   --values adapters/values-jdbc-adapter-dev.yaml \
@@ -132,7 +132,7 @@ helm upgrade --install wm-msr . \
 
 # Or deploy without SAP adapter
 helm upgrade --install wm-msr . \
-  --namespace webmethods \
+  --namespace wm-dev \
   --values values.yaml \
   --values values-dev.yaml \
   --values adapters/values-jdbc-adapter-dev.yaml \
@@ -143,10 +143,10 @@ helm upgrade --install wm-msr . \
 
 ```bash
 # Check pod status
-kubectl get pods -n webmethods -w
+kubectl get pods -n wm-dev -w
 
 # Access MSR Admin Console
-kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
+kubectl port-forward svc/wm-msr 5555:5555 -n wm-dev
 # Open: http://localhost:5555 (Administrator/manage)
 ```
 
@@ -307,7 +307,7 @@ accounts.Dev\ io.password=$env{WMCLOUD_DEV_IO_PASSWORD}
 ### Minimal (Development)
 
 ```bash
-helm upgrade --install wm-msr . -n webmethods \
+helm upgrade --install wm-msr . -n wm-dev \
   --set replicaCount=1 \
   --set persistence.enabled=false \
   --set jdbcPool.enabled=false \
@@ -318,7 +318,7 @@ helm upgrade --install wm-msr . -n webmethods \
 ### Standard (QA/Test)
 
 ```bash
-helm upgrade --install wm-msr . -n webmethods \
+helm upgrade --install wm-msr . -n wm-qa \
   -f values.yaml -f values-qa.yaml \
   -f adapters/values-jdbc-adapter-qa.yaml \
   -f adapters/values-sap-adapter-qa.yaml
@@ -327,7 +327,7 @@ helm upgrade --install wm-msr . -n webmethods \
 ### Enterprise (Production)
 
 ```bash
-helm upgrade --install wm-msr . -n webmethods \
+helm upgrade --install wm-msr . -n wm-prod \
   -f values.yaml -f values-prod.yaml \
   -f adapters/values-jdbc-adapter-prod.yaml \
   -f adapters/values-sap-adapter-prod.yaml
@@ -368,7 +368,7 @@ All secrets use environment-specific prefixes with friendly naming conventions:
 | Keystore | `{prefix}-keystore-password` | `dev-keystore-password` |
 | Key Alias | `{prefix}-keyalias-password` | `dev-keyalias-password` |
 | Truststore | `{prefix}-truststore-password` | `dev-truststore-password` |
-| UM Connection | `{prefix}-um-{alias}-password` | `dev-um-business-password` |
+| UM Connection | `{prefix}-um-{alias}-password` | `dev-um-biz-password` |
 | SAP SNC cred_v2 | `{prefix}-sap-snc-credv2` | `qa-sap-snc-credv2` (base64 encoded) |
 | SAP SNC PSE | `{prefix}-sap-snc-pse` | `qa-sap-snc-pse` (base64 encoded) |
 | webMethods Cloud | `{prefix}-wmcloud-{account}-password` | `dev-wmcloud-dev-io-password` |
@@ -380,25 +380,25 @@ All secrets use environment-specific prefixes with friendly naming conventions:
 ### Scale Deployment
 
 ```bash
-kubectl scale statefulset wm-msr --replicas=3 -n webmethods
+kubectl scale statefulset wm-msr --replicas=3 -n wm-dev
 ```
 
 ### View Logs
 
 ```bash
-kubectl logs -f wm-msr-0 -n webmethods
+kubectl logs -f wm-msr-0 -n wm-dev
 ```
 
 ### Restart Pods (Rolling)
 
 ```bash
-kubectl rollout restart statefulset/wm-msr -n webmethods
+kubectl rollout restart statefulset/wm-msr -n wm-dev
 ```
 
 ### Upgrade Helm Release
 
 ```bash
-helm upgrade wm-msr . -n webmethods \
+helm upgrade wm-msr . -n wm-dev \
   -f values.yaml -f values-dev.yaml \
   -f adapters/values-jdbc-adapter-dev.yaml \
   -f adapters/values-sap-adapter-dev.yaml \
@@ -408,14 +408,14 @@ helm upgrade wm-msr . -n webmethods \
 ### Rollback
 
 ```bash
-helm rollback wm-msr -n webmethods
+helm rollback wm-msr -n wm-dev
 ```
 
 ### Uninstall
 
 ```bash
-helm uninstall wm-msr -n webmethods
-kubectl delete pvc -l app.kubernetes.io/name=webmethods-msr -n webmethods
+helm uninstall wm-msr -n wm-dev
+kubectl delete pvc -l app.kubernetes.io/name=webmethods-msr -n wm-dev
 ```
 
 ---
@@ -424,11 +424,11 @@ kubectl delete pvc -l app.kubernetes.io/name=webmethods-msr -n webmethods
 
 | Issue | Command |
 |-------|---------|
-| Pod stuck in Pending | `kubectl describe pod wm-msr-0 -n webmethods` |
-| Check events | `kubectl get events -n webmethods --sort-by='.lastTimestamp'` |
-| View MSR logs | `kubectl logs wm-msr-0 -n webmethods` |
-| Check secrets | `kubectl get secrets -n webmethods` |
-| Test DB connectivity | `kubectl exec -it wm-msr-0 -n webmethods -- nc -zv dbserver 1433` |
+| Pod stuck in Pending | `kubectl describe pod wm-msr-0 -n wm-dev` |
+| Check events | `kubectl get events -n wm-dev --sort-by='.lastTimestamp'` |
+| View MSR logs | `kubectl logs wm-msr-0 -n wm-dev` |
+| Check secrets | `kubectl get secrets -n wm-dev` |
+| Test DB connectivity | `kubectl exec -it wm-msr-0 -n wm-dev -- nc -zv dbserver 1433` |
 
 For detailed troubleshooting, see [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md#troubleshooting).
 
@@ -526,7 +526,7 @@ For complete architecture diagrams, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 For issues and questions:
 
 1. Review [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md#troubleshooting) for common solutions
-2. Check MSR logs: `kubectl logs wm-msr-0 -n webmethods`
+2. Check MSR logs: `kubectl logs wm-msr-0 -n wm-dev`
 3. Verify Azure Key Vault access and secret names
 4. Ensure CSI driver is installed: `kubectl get pods -n kube-system -l app=secrets-store-csi-driver`
 

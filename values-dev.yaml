@@ -316,14 +316,14 @@ jmsConfig:
   enabled: true
 
 # Universal Messaging Configuration
-# Passwords stored in Azure Key Vault: dev-um-business-password, dev-um-logs-password
+# Passwords stored in Azure Key Vault: dev-um-biz-password, dev-um-logs-password
 um:
   enabled: true
   connections:
     # Business UM Connection (Active-Passive Cluster)
     - connectionAlias: "IS_UM_BUSINESS"
       connectionEnabled: true
-      url: "nsp://um-business:9000"
+      url: "nsp://um-biz:9000"
       user: "Administrator"
       useCSQ: "true"
       csqSize: "-1"

@@ -133,7 +133,7 @@ helm upgrade --install wm-msr ./msr-helm \
   -f values-dev.yaml \
   -f adapters/values-jdbc-adapter-dev.yaml \
   -f adapters/values-sap-adapter-dev.yaml \
-  -n webmethods
+  -n wm-dev
 ```
 
 ### Step 4: Force Secret Refresh (if needed)
@@ -142,26 +142,26 @@ If the new password doesn't appear in the Kubernetes secret:
 
 ```bash
 # Delete existing secret to force refresh
-kubectl delete secret wm-msr-jdbc-secrets -n webmethods
+kubectl delete secret wm-msr-jdbc-secrets -n wm-dev
 
 # Delete pods to recreate with new secret
-kubectl delete pods -l app=wm-msr -n webmethods
+kubectl delete pods -l app=wm-msr -n wm-dev
 
 # Wait for pods to restart
-kubectl get pods -n webmethods -l app=wm-msr -w
+kubectl get pods -n wm-dev -l app=wm-msr -w
 ```
 
 ### Step 5: Verify
 
 ```bash
 # Check secret has new password
-kubectl get secret wm-msr-jdbc-secrets -n webmethods -o yaml | grep JDBC_ADAPTER_ORACLE
+kubectl get secret wm-msr-jdbc-secrets -n wm-dev -o yaml | grep JDBC_ADAPTER_ORACLE
 
 # Check ConfigMap has connection properties
-kubectl get configmap wm-msr-config -n webmethods -o yaml | grep -A5 "oracle_db_connection"
+kubectl get configmap wm-msr-config -n wm-dev -o yaml | grep -A5 "oracle_db_connection"
 
 # Verify in MSR Admin Console
-kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
+kubectl port-forward svc/wm-msr 5555:5555 -n wm-dev
 # Open: http://localhost:5555 -> Adapters -> JDBC Adapter -> Connections
 ```
 
@@ -369,15 +369,15 @@ jdbcPool:
 **Solutions:**
 1. Verify the package exists:
    ```bash
-   kubectl exec -n webmethods wm-msr-0 -- ls /opt/softwareag/IntegrationServer/packages/
+   kubectl exec -n wm-dev wm-msr-0 -- ls /opt/softwareag/IntegrationServer/packages/
    ```
 2. Check ConfigMap:
    ```bash
-   kubectl get configmap wm-msr-config -n webmethods -o yaml | grep "artConnection.*myconnection"
+   kubectl get configmap wm-msr-config -n wm-dev -o yaml | grep "artConnection.*myconnection"
    ```
 3. Restart pods:
    ```bash
-   kubectl rollout restart statefulset wm-msr -n webmethods
+   kubectl rollout restart statefulset wm-msr -n wm-dev
    ```
 
 ### Key Vault Secret Not Found
@@ -395,12 +395,12 @@ jdbcPool:
 **Solutions:**
 1. Delete secret and pods to force refresh:
    ```bash
-   kubectl delete secret wm-msr-jdbc-secrets -n webmethods
-   kubectl delete pods -l app=wm-msr -n webmethods
+   kubectl delete secret wm-msr-jdbc-secrets -n wm-dev
+   kubectl delete pods -l app=wm-msr -n wm-dev
    ```
 2. Check secret after pods restart:
    ```bash
-   kubectl get secret wm-msr-jdbc-secrets -n webmethods -o yaml
+   kubectl get secret wm-msr-jdbc-secrets -n wm-dev -o yaml
    ```
 
 ### Database Connection Refused
@@ -408,7 +408,7 @@ jdbcPool:
 **Solutions:**
 1. Test connectivity:
    ```bash
-   kubectl exec -n webmethods wm-msr-0 -- nc -zv server.database.windows.net 1433
+   kubectl exec -n wm-dev wm-msr-0 -- nc -zv server.database.windows.net 1433
    ```
 2. Check Azure SQL/DB firewall allows AKS subnet
 3. Verify server name, port, and database name

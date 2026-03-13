@@ -62,7 +62,7 @@ This document describes the reference architecture for deploying Software AG web
 │  │                     AZURE KUBERNETES SERVICE (AKS)                       │    │
 │  │                                                                          │    │
 │  │   ┌─────────────────────────────────────────────────────────────────┐   │    │
-│  │   │                    NAMESPACE: webmethods                         │   │    │
+│  │   │                    NAMESPACE: wm-dev                             │   │    │
 │  │   │                                                                  │   │    │
 │  │   │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │   │    │
 │  │   │  │   MSR-0      │  │   MSR-1      │  │   MSR-N      │          │   │    │
@@ -554,7 +554,7 @@ Cost: ~$5,000/month
 | SAP Adapter | `{prefix}-sapadapter-{alias}-password` | `dev-sapadapter-rfcagency-password` |
 | Keystore | `{prefix}-keystore-password` | `dev-keystore-password` |
 | Truststore | `{prefix}-truststore-password` | `dev-truststore-password` |
-| UM Connection | `{prefix}-um-{alias}-password` | `dev-um-business-password` |
+| UM Connection | `{prefix}-um-{alias}-password` | `dev-um-biz-password` |
 | webMethods Cloud | `{prefix}-wmcloud-{account}-password` | `dev-wmcloud-dev-io-password` |
 
 ---
@@ -583,7 +583,7 @@ Cost: ~$5,000/month
 
 Configuration (application.properties):
   messaging.IS_UM_CONNECTION.enabled=true
-  messaging.IS_UM_CONNECTION.url=nsp://wm-um.webmethods.svc:9000
+  messaging.IS_UM_CONNECTION.url=nsp://um-biz:9000
   messaging.IS_UM_CONNECTION.user=Administrator
   messaging.IS_UM_CONNECTION.password=$env{UM_PASSWORD}
 ```
@@ -710,8 +710,8 @@ Internal Services:
 ┌─────────────────────────────────────────────────────────────────┐
 │  Service               │  Port  │  DNS Name                     │
 ├─────────────────────────────────────────────────────────────────┤
-│  wm-msr                │  5555  │  wm-msr.webmethods.svc        │
-│  wm-um                 │  9000  │  wm-um.webmethods.svc         │
+│  wm-msr                │  5555  │  wm-msr.wm-dev.svc            │
+│  um-biz                │  9000  │  um-biz.wm-dev.svc            │
 │  terracotta-service    │  9510  │  terracotta-service.web...    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -966,27 +966,27 @@ msr-helm/
 ```bash
 # Development (with all adapters)
 helm upgrade --install wm-msr ./msr-helm \
-  -n webmethods \
+  -n wm-dev \
   -f values-dev.yaml \
   -f adapters/values-jdbc-adapter-dev.yaml \
   -f adapters/values-sap-adapter-dev.yaml
 
 # Development (JDBC only, no SAP)
 helm upgrade --install wm-msr ./msr-helm \
-  -n webmethods \
+  -n wm-dev \
   -f values-dev.yaml \
   -f adapters/values-jdbc-adapter-dev.yaml
 
 # QA
 helm upgrade --install wm-msr ./msr-helm \
-  -n webmethods-qa \
+  -n wm-qa \
   -f values-qa.yaml \
   -f adapters/values-jdbc-adapter-qa.yaml \
   -f adapters/values-sap-adapter-qa.yaml
 
 # Production
 helm upgrade --install wm-msr ./msr-helm \
-  -n webmethods-prod \
+  -n wm-prod \
   -f values-prod.yaml \
   -f adapters/values-jdbc-adapter-prod.yaml \
   -f adapters/values-sap-adapter-prod.yaml

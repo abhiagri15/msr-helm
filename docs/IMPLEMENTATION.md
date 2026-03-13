@@ -72,14 +72,14 @@ az aks get-credentials --resource-group webmethods-rg --name webmethods-aks
 ### 2. Create Namespace
 
 ```bash
-kubectl create namespace webmethods
+kubectl create namespace wm-dev
 ```
 
 ### 3. Deploy Minimal Configuration
 
 ```bash
 # Deploy with default values (no external dependencies)
-helm install wm-msr . -n webmethods \
+helm install wm-msr . -n wm-dev \
   --set replicaCount=1 \
   --set persistence.enabled=false \
   --set jdbcPool.enabled=false \
@@ -91,13 +91,13 @@ helm install wm-msr . -n webmethods \
 
 ```bash
 # Check pod status
-kubectl get pods -n webmethods -w
+kubectl get pods -n wm-dev -w
 
 # Check MSR logs
-kubectl logs -n webmethods wm-msr-0 -f
+kubectl logs -n wm-dev wm-msr-0 -f
 
 # Access MSR Admin Console (port-forward)
-kubectl port-forward -n webmethods svc/wm-msr 5555:5555
+kubectl port-forward -n wm-dev svc/wm-msr 5555:5555
 # Open: http://localhost:5555
 ```
 
@@ -333,7 +333,7 @@ docker push ${ACR_NAME}.azurecr.io/webmethods-msr:11.1.0.6
 
 ```bash
 kubectl create secret docker-registry regcred \
-  --namespace webmethods \
+  --namespace wm-dev \
   --docker-server=sagcr.azurecr.io \
   --docker-username=your-username \
   --docker-password=your-password
@@ -372,13 +372,13 @@ jdbcPool:
 # 4. Universal Messaging
 um:
   enabled: true
-  url: "nsp://wm-um.webmethods.svc.cluster.local:9000"
+  url: "nsp://wm-um.wm-dev.svc.cluster.local:9000"
 
 # 5. Terracotta (for session clustering)
 terracotta:
   enabled: true
   urls:
-    - "terracotta-0.terracotta.webmethods.svc.cluster.local:9510"
+    - "terracotta-0.terracotta.wm-dev.svc.cluster.local:9510"
 ```
 
 ### Get Required Azure IDs
@@ -399,7 +399,7 @@ az aks show \
 ```bash
 # Deploy to development (with all adapters)
 helm upgrade --install wm-msr . \
-  -n webmethods \
+  -n wm-dev \
   -f values.yaml \
   -f values-dev.yaml \
   -f adapters/values-jdbc-adapter-dev.yaml \
@@ -407,14 +407,14 @@ helm upgrade --install wm-msr . \
 
 # Deploy to development (JDBC only, no SAP)
 helm upgrade --install wm-msr . \
-  -n webmethods \
+  -n wm-dev \
   -f values.yaml \
   -f values-dev.yaml \
   -f adapters/values-jdbc-adapter-dev.yaml
 
 # Deploy to QA
 helm upgrade --install wm-msr . \
-  -n webmethods \
+  -n wm-dev \
   -f values.yaml \
   -f values-qa.yaml \
   -f adapters/values-jdbc-adapter-qa.yaml \
@@ -422,7 +422,7 @@ helm upgrade --install wm-msr . \
 
 # Deploy to production
 helm upgrade --install wm-msr . \
-  -n webmethods \
+  -n wm-dev \
   -f values.yaml \
   -f values-prod.yaml \
   -f adapters/values-jdbc-adapter-prod.yaml \
@@ -435,19 +435,19 @@ helm upgrade --install wm-msr . \
 
 ```bash
 # Check all resources
-kubectl get all -n webmethods
+kubectl get all -n wm-dev
 
 # Check SecretProviderClass
-kubectl get secretproviderclass -n webmethods
+kubectl get secretproviderclass -n wm-dev
 
 # Check secrets created from Key Vault
-kubectl get secrets -n webmethods
+kubectl get secrets -n wm-dev
 
 # Check ConfigMaps
-kubectl get configmap -n webmethods
+kubectl get configmap -n wm-dev
 
 # Describe pod for events
-kubectl describe pod wm-msr-0 -n webmethods
+kubectl describe pod wm-msr-0 -n wm-dev
 ```
 
 ---
@@ -551,17 +551,17 @@ To enable `readOnlyRootFilesystem`, you would need to refactor these paths to us
 
 ```bash
 # Check pod security context
-kubectl get pod wm-msr-0 -n webmethods -o jsonpath='{.spec.securityContext}' | jq .
+kubectl get pod wm-msr-0 -n wm-dev -o jsonpath='{.spec.securityContext}' | jq .
 
 # Check container security context
-kubectl get pod wm-msr-0 -n webmethods -o jsonpath='{.spec.containers[0].securityContext}' | jq .
+kubectl get pod wm-msr-0 -n wm-dev -o jsonpath='{.spec.containers[0].securityContext}' | jq .
 
 # Verify the MSR process runs as sagadmin (UID 1724)
-kubectl exec wm-msr-0 -n webmethods -c msr -- id
+kubectl exec wm-msr-0 -n wm-dev -c msr -- id
 # Expected output: uid=1724(sagadmin) gid=1724(sagadmin) groups=1724(sagadmin)
 
 # Verify no capabilities are granted
-kubectl exec wm-msr-0 -n webmethods -c msr -- sh -c "cat /proc/1/status | grep Cap"
+kubectl exec wm-msr-0 -n wm-dev -c msr -- sh -c "cat /proc/1/status | grep Cap"
 ```
 
 ---
@@ -620,10 +620,10 @@ caching:
 
 ```bash
 # Check postStart hook output in MSR logs
-kubectl logs wm-msr-0 -n webmethods -c msr | grep -i "cache"
+kubectl logs wm-msr-0 -n wm-dev -c msr | grep -i "cache"
 
 # Access admin console to verify cache managers are running
-kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
+kubectl port-forward svc/wm-msr 5555:5555 -n wm-dev
 # Open: http://localhost:5555/WmRoot/settings-cache.dsp
 # All cache managers should show "Shutdown" links (meaning they are started)
 ```
@@ -650,8 +650,8 @@ terracotta:
   enabled: true
   cacheManagerName: "IS_TERRACOTTA_CACHE"
   urls:
-    - "terracotta-0.terracotta.webmethods.svc.cluster.local:9510"
-    - "terracotta-1.terracotta.webmethods.svc.cluster.local:9510"
+    - "terracotta-0.terracotta.wm-dev.svc.cluster.local:9510"
+    - "terracotta-1.terracotta.wm-dev.svc.cluster.local:9510"
   waitForReady: true  # Init container waits for Terracotta before MSR starts
 ```
 
@@ -702,11 +702,11 @@ jmsConfig:
 
 ```bash
 # Check JMS config is mounted
-kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+kubectl exec wm-msr-0 -n wm-dev -c wm-msr -- \
   cat /opt/softwareag/IntegrationServer/config/jms.cnf
 
 # Check JNDI properties
-kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+kubectl exec wm-msr-0 -n wm-dev -c wm-msr -- \
   cat /opt/softwareag/IntegrationServer/config/jndi/jndi_JNDI.properties
 ```
 
@@ -762,15 +762,15 @@ The Terracotta client license is automatically mounted when `terracotta.enabled:
 helm upgrade --install wm-msr ./msr-helm -f values-dev.yaml
 
 # Verify IS license is mounted
-kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+kubectl exec wm-msr-0 -n wm-dev -c wm-msr -- \
   ls -la /opt/softwareag/IntegrationServer/instances/default/config/licenseKey.xml
 
 # Verify TC license is mounted (if Terracotta is enabled)
-kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+kubectl exec wm-msr-0 -n wm-dev -c wm-msr -- \
   ls -la /opt/softwareag/IntegrationServer/config/terracotta-license.key
 
 # Check MSR admin console for license status
-kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
+kubectl port-forward svc/wm-msr 5555:5555 -n wm-dev
 # Open: http://localhost:5555 → Settings → Licensing
 ```
 
@@ -824,7 +824,7 @@ autoscaling:
 
 **Deploy:**
 ```bash
-helm upgrade --install wm-msr . -n webmethods \
+helm upgrade --install wm-msr . -n wm-dev \
   -f values.yaml -f values-dev.yaml \
   -f adapters/values-jdbc-adapter-dev.yaml
 ```
@@ -859,7 +859,7 @@ jdbcPool:
 
 um:
   enabled: true
-  url: "nsp://wm-um-qa.webmethods.svc.cluster.local:9000"
+  url: "nsp://wm-um-qa.wm-dev.svc.cluster.local:9000"
 
 terracotta:
   enabled: false
@@ -870,7 +870,7 @@ autoscaling:
 
 **Deploy:**
 ```bash
-helm upgrade --install wm-msr . -n webmethods \
+helm upgrade --install wm-msr . -n wm-dev \
   -f values.yaml -f values-qa.yaml \
   -f adapters/values-jdbc-adapter-qa.yaml \
   -f adapters/values-sap-adapter-qa.yaml
@@ -915,13 +915,13 @@ jdbcPool:
 
 um:
   enabled: true
-  url: "nsp://wm-um-prod.webmethods.svc.cluster.local:9000"
+  url: "nsp://wm-um-prod.wm-dev.svc.cluster.local:9000"
 
 terracotta:
   enabled: true
   urls:
-    - "terracotta-0.terracotta.webmethods.svc.cluster.local:9510"
-    - "terracotta-1.terracotta.webmethods.svc.cluster.local:9510"
+    - "terracotta-0.terracotta.wm-dev.svc.cluster.local:9510"
+    - "terracotta-1.terracotta.wm-dev.svc.cluster.local:9510"
 
 autoscaling:
   enabled: true
@@ -937,7 +937,7 @@ podDisruptionBudget:
 
 **Deploy:**
 ```bash
-helm upgrade --install wm-msr . -n webmethods \
+helm upgrade --install wm-msr . -n wm-dev \
   -f values.yaml -f values-prod.yaml \
   -f adapters/values-jdbc-adapter-prod.yaml \
   -f adapters/values-sap-adapter-prod.yaml
@@ -1020,7 +1020,7 @@ um:
   enabled: true
   connectionEnabled: true
   connectionAlias: "IS_UM_CONNECTION"
-  url: "nsp://wm-um.webmethods.svc.cluster.local:9000"
+  url: "nsp://wm-um.wm-dev.svc.cluster.local:9000"
   user: "Administrator"
   useCSQ: "true"
   csqSize: "-1"
@@ -1038,8 +1038,8 @@ terracotta:
   enabled: true
   cacheManagerName: "IS_TERRACOTTA_CACHE"
   urls:
-    - "terracotta-0.terracotta.webmethods.svc.cluster.local:9510"
-    - "terracotta-1.terracotta.webmethods.svc.cluster.local:9510"
+    - "terracotta-0.terracotta.wm-dev.svc.cluster.local:9510"
+    - "terracotta-1.terracotta.wm-dev.svc.cluster.local:9510"
   waitForReady: true
 ```
 
@@ -1104,8 +1104,8 @@ az aks scale \
 
 **Check for secret/volume issues:**
 ```bash
-kubectl describe pod wm-msr-0 -n webmethods
-kubectl get events -n webmethods --sort-by='.lastTimestamp'
+kubectl describe pod wm-msr-0 -n wm-dev
+kubectl get events -n wm-dev --sort-by='.lastTimestamp'
 ```
 
 **Common causes:**
@@ -1117,8 +1117,8 @@ kubectl get events -n webmethods --sort-by='.lastTimestamp'
 
 **Check MSR logs:**
 ```bash
-kubectl logs wm-msr-0 -n webmethods
-kubectl logs wm-msr-0 -n webmethods --previous
+kubectl logs wm-msr-0 -n wm-dev
+kubectl logs wm-msr-0 -n wm-dev --previous
 ```
 
 **Common causes:**
@@ -1131,7 +1131,7 @@ kubectl logs wm-msr-0 -n webmethods --previous
 **Test database connectivity:**
 ```bash
 # Exec into pod
-kubectl exec -it wm-msr-0 -n webmethods -- /bin/bash
+kubectl exec -it wm-msr-0 -n wm-dev -- /bin/bash
 
 # Test connection (inside pod)
 nc -zv database-server 1433
@@ -1139,7 +1139,7 @@ nc -zv database-server 1433
 
 **Verify secrets are mounted:**
 ```bash
-kubectl exec wm-msr-0 -n webmethods -- printenv | grep JDBC
+kubectl exec wm-msr-0 -n wm-dev -- printenv | grep JDBC
 ```
 
 ### Key Vault Access Issues
@@ -1147,7 +1147,7 @@ kubectl exec wm-msr-0 -n webmethods -- printenv | grep JDBC
 **Verify identity permissions:**
 ```bash
 # Get kubelet identity
-KUBELET_ID=$(az aks show -g webmethods-rg -n webmethods-aks \
+KUBELET_ID=$(az aks show -g webmethods-rg -n wm-dev-aks \
   --query identityProfile.kubeletidentity.clientId -o tsv)
 
 # Check Key Vault access
@@ -1170,17 +1170,17 @@ az keyvault set-policy \
 
 **Check ConfigMap exists:**
 ```bash
-kubectl get configmap -n webmethods | grep esb
+kubectl get configmap -n wm-dev | grep esb
 ```
 
 **Check temp mount has files:**
 ```bash
-kubectl exec wm-msr-0 -n webmethods -- ls -la /tmp/esb-app-configs/
+kubectl exec wm-msr-0 -n wm-dev -- ls -la /tmp/esb-app-configs/
 ```
 
 **Check target directory:**
 ```bash
-kubectl exec wm-msr-0 -n webmethods -- ls -lR /opt/softwareag/ESB_App_Configs/
+kubectl exec wm-msr-0 -n wm-dev -- ls -lR /opt/softwareag/ESB_App_Configs/
 ```
 
 **Common causes:**
@@ -1192,14 +1192,14 @@ kubectl exec wm-msr-0 -n webmethods -- ls -lR /opt/softwareag/ESB_App_Configs/
 
 **Check Terracotta pods:**
 ```bash
-kubectl get pods -n webmethods -l app=terracotta
-kubectl logs terracotta-0 -n webmethods
+kubectl get pods -n wm-dev -l app=terracotta
+kubectl logs terracotta-0 -n wm-dev
 ```
 
 **Verify Terracotta URLs:**
 ```bash
 # Test connectivity from MSR pod
-kubectl exec -it wm-msr-0 -n webmethods -- nc -zv terracotta-0.terracotta.webmethods.svc.cluster.local 9510
+kubectl exec -it wm-msr-0 -n wm-dev -- nc -zv terracotta-0.terracotta.wm-dev.svc.cluster.local 9510
 ```
 
 ---
@@ -1210,43 +1210,43 @@ kubectl exec -it wm-msr-0 -n webmethods -- nc -zv terracotta-0.terracotta.webmet
 
 ```bash
 # Update image tag
-helm upgrade wm-msr . -n webmethods \
+helm upgrade wm-msr . -n wm-dev \
   -f values.yaml \
   -f values-dev.yaml \
   --set image.tag="11.1.0.7"
 
 # Monitor rollout
-kubectl rollout status statefulset/wm-msr -n webmethods
+kubectl rollout status statefulset/wm-msr -n wm-dev
 ```
 
 ### Blue-Green Deployment
 
 ```bash
 # Deploy new version with different release name
-helm install wm-msr-v2 . -n webmethods \
+helm install wm-msr-v2 . -n wm-dev \
   -f values.yaml \
   -f values-prod.yaml \
   --set image.tag="11.1.0.7"
 
 # Verify new deployment
-kubectl get pods -n webmethods -l app.kubernetes.io/instance=wm-msr-v2
+kubectl get pods -n wm-dev -l app.kubernetes.io/instance=wm-msr-v2
 
 # Switch traffic (update ingress or service)
 # Then remove old deployment
-helm uninstall wm-msr -n webmethods
+helm uninstall wm-msr -n wm-dev
 ```
 
 ### Rollback
 
 ```bash
 # View history
-helm history wm-msr -n webmethods
+helm history wm-msr -n wm-dev
 
 # Rollback to previous version
-helm rollback wm-msr -n webmethods
+helm rollback wm-msr -n wm-dev
 
 # Rollback to specific revision
-helm rollback wm-msr 2 -n webmethods
+helm rollback wm-msr 2 -n wm-dev
 ```
 
 ---
@@ -1258,7 +1258,7 @@ helm rollback wm-msr 2 -n webmethods
 1. **Configuration Backup (Helm values)**
    ```bash
    # Export current values
-   helm get values wm-msr -n webmethods > backup/values-$(date +%Y%m%d).yaml
+   helm get values wm-msr -n wm-dev > backup/values-$(date +%Y%m%d).yaml
    ```
 
 2. **Database Backup**
@@ -1280,7 +1280,7 @@ helm rollback wm-msr 2 -n webmethods
    kind: VolumeSnapshot
    metadata:
      name: msr-snapshot-$(date +%Y%m%d)
-     namespace: webmethods
+     namespace: wm-dev
    spec:
      source:
        persistentVolumeClaimName: data-wm-msr-0
@@ -1291,7 +1291,7 @@ helm rollback wm-msr 2 -n webmethods
 
 **Restore from Helm values:**
 ```bash
-helm upgrade --install wm-msr . -n webmethods -f backup/values-20231215.yaml
+helm upgrade --install wm-msr . -n wm-dev -f backup/values-20231215.yaml
 ```
 
 **Restore database:**
@@ -1313,31 +1313,31 @@ az sql db restore \
 
 ```bash
 # View all MSR resources
-kubectl get all -n webmethods -l app.kubernetes.io/name=webmethods-msr
+kubectl get all -n wm-dev -l app.kubernetes.io/name=webmethods-msr
 
 # Watch pod status
-kubectl get pods -n webmethods -w
+kubectl get pods -n wm-dev -w
 
 # Get pod logs
-kubectl logs -f wm-msr-0 -n webmethods
+kubectl logs -f wm-msr-0 -n wm-dev
 
 # Execute command in pod
-kubectl exec -it wm-msr-0 -n webmethods -- /bin/bash
+kubectl exec -it wm-msr-0 -n wm-dev -- /bin/bash
 
 # Port forward for admin console
-kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
+kubectl port-forward svc/wm-msr 5555:5555 -n wm-dev
 
 # View secret content (base64 decoded)
-kubectl get secret wm-msr-jdbc-secrets -n webmethods -o jsonpath='{.data.JDBC_POOL_URL}' | base64 -d
+kubectl get secret wm-msr-jdbc-secrets -n wm-dev -o jsonpath='{.data.JDBC_POOL_URL}' | base64 -d
 
 # Scale deployment
-kubectl scale statefulset wm-msr --replicas=3 -n webmethods
+kubectl scale statefulset wm-msr --replicas=3 -n wm-dev
 
 # View resource usage
-kubectl top pods -n webmethods
+kubectl top pods -n wm-dev
 
 # Restart pods (rolling)
-kubectl rollout restart statefulset/wm-msr -n webmethods
+kubectl rollout restart statefulset/wm-msr -n wm-dev
 ```
 
 ### Environment Variables Reference
@@ -1461,7 +1461,7 @@ mwsSamlResolverUrl: "http://mws-dev.example.com:8585/services/SAML"
 **Verification:**
 ```bash
 # Check server.cnf contains the SAML resolver URL
-kubectl exec wm-msr-0 -n webmethods -c wm-msr -- \
+kubectl exec wm-msr-0 -n wm-dev -c wm-msr -- \
   grep samlResolver /opt/softwareag/IntegrationServer/instances/default/config/server.cnf
 ```
 
@@ -1493,7 +1493,7 @@ fileAccessControl:
 **Verification:**
 ```bash
 # Check if fileAccessControl.cnf is mounted
-kubectl exec wm-msr-0 -n webmethods -c msr -- \
+kubectl exec wm-msr-0 -n wm-dev -c msr -- \
   cat /opt/softwareag/IntegrationServer/packages/WmPublic/config/fileAccessControl.cnf
 ```
 
