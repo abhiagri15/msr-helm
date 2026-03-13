@@ -1,0 +1,20 @@
+# Extended Settings for Dev Environment
+# ======================================
+# Properties here are appended to application.properties at startup.
+# Uses settings.watt.* prefix per IBM Configuration Variables Template format.
+# Simple key=value properties can also go in values-dev.yaml extendedSettings.properties map.
+#
+# URL Aliases
+# settings.watt.server.url.alias.legacyApi=/invoke/legacy.api
+# settings.watt.server.url.alias.healthCheck=/health
+#
+# Connection Tuning
+# settings.watt.net.timeout=120
+# settings.watt.net.maxClientKeepaliveConns=50
+#
+# Thread Pool
+settings.watt.server.threadPool=200
+settings.watt.server.threadPoolMin=20
+
+# Email Settings
+settings.watt.server.email.from = abhishek15@gmail.com
