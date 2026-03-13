@@ -1,9 +1,6 @@
 # Production Environment Configuration
 # 3-node cluster with full resources
 
-global:
-  namespace: webmethods
-
 environment: prod
 
 # MWS Single Sign-On - SAML Resolver URL (Prod MWS instance)
@@ -82,7 +79,7 @@ jdbc:
   enabled: true
   pool:
     name: "IS-Pool"
-    dbURL: "jdbc:postgresql://postgresql.webmethods.svc.cluster.local:5432/webmethods"
+    dbURL: "jdbc:postgresql://postgresql:5432/webmethods"
     driverAlias: "PostgresqlDriver"
     username: "postgres"
     password: "admin123"
@@ -159,6 +156,19 @@ healthProbes:
 license:
   enabled: false
 
+# Extended Settings (watt.* Properties via Config Template)
+extendedSettings:
+  enabled: false
+  properties: {}
+
+# Custom Wrapper Configuration (custom_wrapper.conf)
+customWrapper:
+  enabled: false
+
+# Web Services Endpoint Configuration
+endpointConfigs:
+  enabled: false
+
 # JMS/JNDI Configuration (UM JMS Provider)
 jmsConfig:
   enabled: true
@@ -171,7 +181,7 @@ um:
     # Business UM Connection (Active-Passive Cluster)
     - connectionAlias: "IS_UM_BUSINESS"
       connectionEnabled: true
-      url: "nsp://um-business.webmethods.svc.cluster.local:9000"
+      url: "nsp://um-business:9000"
       user: "Administrator"
       useCSQ: "true"
       csqSize: "-1"
@@ -181,7 +191,7 @@ um:
     # Logs UM Connection (Active-Active Cluster - Combined Service)
     - connectionAlias: "IS_UM_LOGS"
       connectionEnabled: true
-      url: "nsp://um-logs-combined.webmethods.svc.cluster.local:9000"
+      url: "nsp://um-logs-combined:9000"
       user: "Administrator"
       useCSQ: "true"
       csqSize: "-1"
@@ -194,8 +204,8 @@ terracotta:
   enabled: true
   cacheManagerName: "IS_TERRACOTTA_CACHE"
   urls:
-    - "terracotta-0.terracotta-service.webmethods.svc.cluster.local:9510"
-    - "terracotta-1.terracotta-service.webmethods.svc.cluster.local:9510"
+    - "terracotta-0.terracotta-service:9510"
+    - "terracotta-1.terracotta-service:9510"
 
 # Keystore Configuration (example - for production use Azure Key Vault or secure secrets)
 # To use actual keystore files, add 'fileData' field with base64 encoded content
@@ -296,3 +306,26 @@ azureKeyVault:
     # - certName: "prod-partner-bank-cert"     # Partner bank public certificate
     # - certName: "prod-payment-gateway-cert"  # Payment gateway public certificate
     # - certName: "prod-api-partner-cert"      # API partner public certificate
+
+# ============================================================================
+# PACKAGE CONFIGURATIONS (File-based)
+# ============================================================================
+# Package config files auto-discovered from files/prod/packages/*/config/*
+# Current packages: SmClick3
+# ============================================================================
+packageConfigs:
+  enabled: true
+
+# ============================================================================
+# ESB APP CONFIGS (Environment-Specific)
+# ============================================================================
+# ESB App config files auto-discovered recursively from files/prod/ESB_App_Configs/
+# ============================================================================
+esbAppConfigs:
+  enabled: true
+
+# ============================================================================
+# GLOBAL VARIABLES
+# ============================================================================
+globalVariables:
+  enabled: true

@@ -524,7 +524,8 @@ All ConfigMap and Secret volume mounts are set to `readOnly: true` to prevent ac
 | security-stores (keystores) | Secret | Yes |
 | security-stores (truststores) | Secret | Yes |
 | keyvault-store | CSI | Yes |
-| package-configs | ConfigMap | Yes |
+| package-configs | ConfigMap | Yes (mounted to /tmp, copied by postStart) |
+| esb-app-configs | ConfigMap | Yes (mounted to /tmp, copied by postStart) |
 | file-access-control | ConfigMap | Yes |
 | public-caches | ConfigMap | Yes |
 | aclmap-config | ConfigMap | Yes |
@@ -534,6 +535,7 @@ All ConfigMap and Secret volume mounts are set to `readOnly: true` to prevent ac
 | tc-license | ConfigMap | Yes |
 | msr-data (PVC) | PVC | **No** (MSR writes packages, logs, config) |
 | kv-keystores (emptyDir) | emptyDir | **No** (init container writes converted keystores) |
+| esb-app-configs-data (emptyDir) | emptyDir | **No** (postStart copies ESB configs from ConfigMap) |
 
 ### Why readOnlyRootFilesystem Is NOT Enabled
 
@@ -541,6 +543,7 @@ The MSR container's `readOnlyRootFilesystem` is intentionally **not** enabled be
 
 1. `/opt/softwareag/IntegrationServer/config/server.cnf` — Terracotta cache manager configuration injected at startup
 2. `/opt/softwareag/IntegrationServer/config/Caching/*.xml` — Public cache manager XML files copied from the read-only ConfigMap mount
+3. `/opt/softwareag/ESB_App_Configs/` — ESB config files (handled via `emptyDir` volume mount)
 
 To enable `readOnlyRootFilesystem`, you would need to refactor these paths to use `emptyDir` volumes instead.
 
@@ -1161,6 +1164,30 @@ az keyvault set-policy \
   --object-id $(az ad sp show --id $KUBELET_ID --query id -o tsv)
 ```
 
+### ESB_App_Configs Not Appearing in Pod
+
+**Symptom:** `/opt/softwareag/ESB_App_Configs/` directory is empty or doesn't exist.
+
+**Check ConfigMap exists:**
+```bash
+kubectl get configmap -n webmethods | grep esb
+```
+
+**Check temp mount has files:**
+```bash
+kubectl exec wm-msr-0 -n webmethods -- ls -la /tmp/esb-app-configs/
+```
+
+**Check target directory:**
+```bash
+kubectl exec wm-msr-0 -n webmethods -- ls -lR /opt/softwareag/ESB_App_Configs/
+```
+
+**Common causes:**
+1. **No files in `files/{env}/ESB_App_Configs/`** — Ensure files exist for your environment (e.g., `files/dev/ESB_App_Configs/SmOMS/app.properties`)
+2. **`esbAppConfigs.enabled` not set** — Must be `true` in your values file
+3. **Permission denied** — If the `emptyDir` volume is missing, `sagadmin` cannot create directories under root-owned `/opt/softwareag/`. Ensure `statefulset.yaml` has the `esb-app-configs-data` emptyDir volume and mount
+
 ### Terracotta Connection Issues
 
 **Check Terracotta pods:**
@@ -1470,25 +1497,112 @@ kubectl exec wm-msr-0 -n webmethods -c msr -- \
   cat /opt/softwareag/IntegrationServer/packages/WmPublic/config/fileAccessControl.cnf
 ```
 
-### Package-Specific Configuration
+### Package-Specific Configuration (File-based)
 
-Environment-specific app.properties can be configured per custom package.
+Environment-specific config files for IS packages are auto-discovered from the `files/` directory.
+This uses the same file-copy approach as public cache managers (caching XMLs).
 
-**Configuration in values-{env}.yaml:**
+**How it works:**
+1. Place `.properties` files at `files/{env}/packages/{PackageName}/config/`
+2. Set `packageConfigs.enabled: true` in your values file
+3. Files are auto-discovered via `.Files.Glob` and stored in a ConfigMap
+4. PostStart hook copies them to `/opt/softwareag/IntegrationServer/packages/{PackageName}/config/`
+
+**Directory structure:**
+```
+files/
+├── dev/packages/
+│   ├── AbTest/config/app.properties
+│   ├── AbTest2/config/app.properties
+│   └── SmClick3/config/app.properties   # Merged base LDAP + DEV OMS config
+├── qa/packages/
+│   └── SmClick3/config/app.properties   # Merged base LDAP + QA OMS config
+└── prod/packages/
+    └── SmClick3/config/app.properties   # Merged base LDAP + PRD OMS config
+```
+
+**Values file (simplified):**
 ```yaml
 packageConfigs:
   enabled: true
-  packages:
-    - name: MyPackage
-      appProperties: |
-        api.url=https://api-dev.example.com/v1
-        api.key=${MY_PACKAGE_API_KEY}
-        timeout.seconds=30
+  # No inline properties needed - files are auto-discovered
 ```
+
+**Adding a new package config:**
+1. Create the file: `files/{env}/packages/{PkgName}/config/app.properties`
+2. Run `helm upgrade` - the file is auto-discovered, no values file changes needed
+
+**Merging base + environment-specific configs:** When the client provides separate base configs (e.g., LDAP settings shared across envs) and env-specific overrides (e.g., OMS gateway URLs), merge them into a single `app.properties` per environment. This keeps the runtime simple — one file per package per environment.
 
 **Note:** Sensitive values use `${ENV_VAR}` syntax and are injected from Azure Key Vault.
 
+### ESB App Configs (Outside IS Packages)
+
+External application config files that live outside the IS packages directory. These are **environment-specific** and auto-discovered from `files/{env}/ESB_App_Configs/`.
+
+**How it works:**
+1. Place config files at `files/{env}/ESB_App_Configs/{Package}/{subpath}/{filename}` (e.g., `files/dev/ESB_App_Configs/SmOMS/jwt/app.properties`)
+2. Set `esbAppConfigs.enabled: true` in your values file
+3. Files are auto-discovered recursively via `.Files.Glob "files/{env}/ESB_App_Configs/**/*"`
+4. ConfigMap keys encode full relative paths using `---` (triple dash) to replace `/` separators
+5. An `emptyDir` volume is mounted at `/opt/softwareag/ESB_App_Configs` (required because `/opt/softwareag/` is root-owned and the container runs as `sagadmin`)
+6. PostStart hook copies from the ConfigMap temp mount to the `emptyDir` volume, preserving directory structure
+
+**Directory structure (27 files across 3 packages, per environment):**
+```
+files/dev/ESB_App_Configs/       # Environment-specific
+├── SmOMS/                       # 14 files, deep nesting (3-4 levels)
+│   ├── app.properties
+│   ├── jwt/app.properties
+│   ├── util/ldap/app.properties
+│   └── ...
+├── SmPublic/                    # 5 files
+│   ├── app.properties
+│   └── ...
+└── SmSES_v33/                   # 8 files
+    ├── app.properties
+    └── ...
+```
+
+**ConfigMap key encoding:**
+Deep paths are encoded with `---` to avoid collisions:
+- `SmOMS/app.properties` → key: `SmOMS---app.properties`
+- `SmOMS/util/ldap/app.properties` → key: `SmOMS---util---ldap---app.properties`
+
+**Volume architecture:**
+The ESB_App_Configs use a two-volume approach:
+- `esb-app-configs` (ConfigMap) → mounted read-only at `/tmp/esb-app-configs/`
+- `esb-app-configs-data` (emptyDir) → mounted writable at `/opt/softwareag/ESB_App_Configs/`
+- PostStart hook copies from the ConfigMap mount to the emptyDir mount
+
+> **Why emptyDir?** The webMethods Docker image has `/opt/softwareag/` owned by `root:root`. The container runs as `sagadmin` (UID=1724) which cannot create new directories under root-owned paths. The `emptyDir` volume is mounted by Kubernetes before the container starts, making it writable for `sagadmin`.
+
+**Values file:**
+```yaml
+esbAppConfigs:
+  enabled: true  # Set to true when files exist in files/{env}/ESB_App_Configs/
+```
+
+### Global Variables Configuration
+
+Environment-specific `globalVariables.cnf` for IS global variables, mounted directly into the MSR config directory.
+
+**How it works:**
+1. Place `globalVariables.cnf` at `files/{env}/config/globalVariables.cnf`
+2. Set `globalVariables.enabled: true` in your values file
+3. File is mounted as a subPath volume at `/opt/softwareag/IntegrationServer/config/globalVariables.cnf`
+
+**Important:** When migrating from on-premises, update Windows paths to Linux/K8s paths. For example:
+- Windows: `C:\SoftwareAGLocal\IntegrationServer\instances\default\packages\`
+- K8s: `/opt/softwareag/IntegrationServer/instances/default/packages/`
+
+**Values file:**
+```yaml
+globalVariables:
+  enabled: true
+```
+
 ---
 
-*Document Version: 2.7.0*
-*Last Updated: February 2026*
+*Document Version: 2.9.0*
+*Last Updated: March 2026*

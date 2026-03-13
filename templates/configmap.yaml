@@ -2,36 +2,36 @@
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-config
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
   application.properties: |
     # ========================================================================
-    # General IS watt.* Logging Configuration
+    # General IS Logging Configuration (settings.watt.* prefix for Config Template)
     # ========================================================================
     # General IS Debug Level (Off, Fatal, Error, Warn, Info, Debug, Trace)
     # Configurable via values.yaml: logging.level
-    watt.debug.level={{ .Values.logging.level | default "Info" }}
+    settings.watt.debug.level={{ .Values.logging.level | default "Info" }}
 
     # Enable verbose server logging
-    watt.server.verbose={{ .Values.logging.verbose | default false }}
+    settings.watt.server.verbose={{ .Values.logging.verbose | default false }}
 
     # Enable service audit logging
-    watt.server.audit.log={{ .Values.logging.auditLog | default false }}
+    settings.watt.server.audit.log={{ .Values.logging.auditLog | default false }}
 
     # Enable detailed thread logging
-    watt.server.threadDump={{ .Values.logging.threadDump | default false }}
+    settings.watt.server.threadDump={{ .Values.logging.threadDump | default false }}
 
     {{- if .Values.logging.jdbc.enabled }}
     # JDBC Logging Configuration
-    watt.debug.jdbc=true
-    watt.server.jdbcLogLevel={{ .Values.logging.jdbc.level | default "Info" }}
+    settings.watt.debug.jdbc=true
+    settings.watt.server.jdbcLogLevel={{ .Values.logging.jdbc.level | default "Info" }}
     {{- end }}
 
     {{- if .Values.logging.sap.facilities }}
     # Facility-specific logging (format: facility:level)
-    watt.debug2.facList={{ .Values.logging.sap.facilities }}
+    settings.watt.debug2.facList={{ .Values.logging.sap.facilities }}
     {{- end }}
 
     # ========================================================================
@@ -39,7 +39,7 @@ data:
     # ========================================================================
     # SAP SNC Library Path Configuration
     # This property tells the WmSAP adapter where to find the SAP Cryptographic Library
-    watt.sap.snclibpath=/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so
+    settings.watt.sap.snclibpath=/opt/softwareag/sap/snc/sap_crypto/libsapcrypto.so
 
     # SAP Adapter Logging Configuration
     # Levels: 0=Off, 1=Fatal, 2=Error, 3=Warn, 4=Info, 5=Debug, 6=Trace
@@ -85,7 +85,7 @@ data:
     # JDBC Adapter Package Auto-Enable Configuration
     # ========================================================================
     # Enable WmJDBCAdapter package automatically on startup
-    watt.server.packages.WmJDBCAdapter.enabled=true
+    settings.watt.server.packages.WmJDBCAdapter.enabled=true
 
     # ========================================================================
     # Disable Legacy JDBC Connections (hardcoded in package)
@@ -126,7 +126,7 @@ data:
     # SAP Adapter Package Auto-Enable Configuration
     # ========================================================================
     # Enable WmSAP package automatically on startup
-    watt.server.packages.WmSAP.enabled=true
+    settings.watt.server.packages.WmSAP.enabled=true
 
     # ========================================================================
     # SAP Adapter Connection Configuration (artConnection)
@@ -313,6 +313,25 @@ data:
     truststore.{{ .Values.truststoreCertificates.aliasName }}.ksLocation=/opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .Values.truststoreCertificates.fileName }}
     truststore.{{ .Values.truststoreCertificates.aliasName }}.ksPassword=$env{TRUSTSTORE_PASSWORD}
     {{- end }}
+
+    {{- if .Values.extendedSettings.enabled }}
+    # ============================================================================
+    # Extended Settings (from values.yaml extendedSettings.properties map)
+    # ============================================================================
+    # Uses settings.watt.* prefix per IBM Configuration Variables Template format
+    # Ref: https://www.ibm.com/docs/en/webmethods-integration/wm-microservices-runtime
+    {{- range $key, $value := .Values.extendedSettings.properties }}
+    settings.{{ $key }}={{ $value }}
+    {{- end }}
+
+    {{- $extFile := .Files.Get (printf "files/%s/config/extended-settings.cnf" .Values.environment) }}
+    {{- if $extFile }}
+    # ============================================================================
+    # Extended Settings (from files/{{ .Values.environment }}/config/extended-settings.cnf)
+    # ============================================================================
+{{ $extFile | indent 4 }}
+    {{- end }}
+    {{- end }}
   # ============================================================================
   # server.cnf - Server Configuration Properties
   # ============================================================================
@@ -375,13 +394,14 @@ data:
     # Configurable via values.yaml: mwsSamlResolverUrl (environment-specific)
     watt.server.auth.samlResolver={{ .Values.mwsSamlResolverUrl }}
     {{- end }}
+
 ---
 {{- if .Values.terracotta.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-terracotta-xml
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
@@ -405,7 +425,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-jdbc-adapter
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
@@ -453,7 +473,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-file-access-control
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
@@ -496,7 +516,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-aclmap
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
@@ -517,7 +537,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-public-caches
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
@@ -539,7 +559,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-license
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
@@ -560,7 +580,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-tc-license
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
@@ -573,20 +593,25 @@ data:
 # JMS/JNDI Configuration ConfigMap
 # ============================================================================
 # JMS connection aliases and JNDI provider configuration for UM connectivity.
-# Files loaded from files/{environment}/config/jms.cnf and jndi/jndi_JNDI.properties
+# jms.cnf loaded from files/{environment}/config/jms.cnf
+# JNDI provider files auto-discovered from files/{environment}/config/jndi/*
+# Supports multiple JNDI providers (e.g., jndi_JNDI1.properties, jndi_EventProvider.properties)
 # ============================================================================
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-jms-config
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
   jms.cnf: |
 {{ .Files.Get (printf "files/%s/config/jms.cnf" .Values.environment) | indent 4 }}
-  jndi_JNDI.properties: |
-{{ .Files.Get (printf "files/%s/config/jndi/jndi_JNDI.properties" .Values.environment) | indent 4 }}
+  {{- $jndiFiles := .Files.Glob (printf "files/%s/config/jndi/*" .Values.environment) }}
+  {{- range $path, $content := $jndiFiles }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
 {{- end }}
 ---
 {{- if and .Values.sapAdapter .Values.sapAdapter.snc .Values.sapAdapter.snc.externalCredentials .Values.environment }}
@@ -601,10 +626,114 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: {{ .Values.sapAdapter.snc.secretName | default "sap-snc-credentials" }}
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 data:
   {{- $sncFiles := .Files.Glob (printf "files/%s/sap_crypto/sec/*" .Values.environment) }}
 {{ ($sncFiles).AsSecrets | indent 2 }}
+{{- end }}
+---
+{{- if .Values.esbAppConfigs.enabled }}
+{{- $esbFiles := .Files.Glob (printf "files/%s/ESB_App_Configs/**/*" .Values.environment) }}
+{{- if $esbFiles }}
+# ============================================================================
+# ESB App Configs ConfigMap (File-based, Environment-Specific)
+# ============================================================================
+# External application configuration files loaded from
+# files/{environment}/ESB_App_Configs/ (recursive, environment-specific)
+# Deep directory structure is preserved. Key encoding: slashes replaced with ---
+# PostStart hook copies them to /opt/softwareag/ESB_App_Configs/ preserving structure
+#
+# Usage:
+#   1. Place config files at: files/{environment}/ESB_App_Configs/{Pkg}/{subpath}/filename
+#   2. Set esbAppConfigs.enabled: true in your values file
+#   3. Files are auto-discovered recursively via .Files.Glob
+#   4. PostStart hook recreates the full directory structure in the pod
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-esb-app-configs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+  annotations:
+    description: "ESB application configuration files (outside IS packages)"
+data:
+  {{- $esbPrefix := printf "files/%s/ESB_App_Configs/" $.Values.environment }}
+  {{- range $path, $content := $esbFiles }}
+  {{- $relPath := trimPrefix $esbPrefix $path }}
+  # Path: {{ $relPath }}
+  {{ replace "/" "---" $relPath }}: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+---
+{{- if .Values.globalVariables.enabled }}
+# ============================================================================
+# Global Variables ConfigMap
+# ============================================================================
+# Integration Server globalVariables.cnf loaded from files/{environment}/config/
+# Mounted to /opt/softwareag/IntegrationServer/config/globalVariables.cnf
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-global-variables
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  {{- $gvFile := .Files.Glob (printf "files/%s/config/globalVariables.cnf" .Values.environment) }}
+  {{- range $path, $content := $gvFile }}
+  globalVariables.cnf: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+{{- end }}
+---
+{{- if and .Values.customWrapper.enabled .Values.environment }}
+# ============================================================================
+# Custom Wrapper Configuration ConfigMap
+# ============================================================================
+# JVM wrapper configuration loaded from files/{environment}/configuration/
+# Mounted directly to /opt/softwareag/IntegrationServer/instances/default/configuration/custom_wrapper.conf
+# Read-only mount is safe because wrapper reads this file once at JVM startup
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-custom-wrapper
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  custom_wrapper.conf: |
+{{ .Files.Get (printf "files/%s/configuration/custom_wrapper.conf" .Values.environment) | indent 4 }}
+{{- end }}
+---
+{{- if and .Values.endpointConfigs.enabled .Values.environment }}
+{{- $endpointFiles := .Files.Glob (printf "files/%s/config/endpoints/*.cnf" .Values.environment) }}
+{{- if $endpointFiles }}
+# ============================================================================
+# Web Services Endpoint Configuration ConfigMap
+# ============================================================================
+# WS endpoint .cnf files auto-discovered from files/{environment}/config/endpoints/
+# PostStart hook copies these from read-only temp mount to writable PVC
+# at /opt/softwareag/IntegrationServer/instances/default/config/endpoints/
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-endpoint-configs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  {{- range $path, $content := $endpointFiles }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+{{- end }}
 {{- end }}

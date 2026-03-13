@@ -1,10 +1,6 @@
 # webMethods MSR Helm Chart Values
 # Multi-node Cluster Configuration
 
-## Global Settings
-global:
-  namespace: webmethods
-
 ## Environment identifier (drives file selection from files/{environment}/)
 ## Set in environment-specific values files: values-dev.yaml, values-qa.yaml, values-prod.yaml
 environment: ""
@@ -265,7 +261,7 @@ um:
   enabled: false  # Set to false by default, override in environment-specific values
   connectionEnabled: true  # When UM is enabled, connection is enabled by default
   connectionAlias: "IS_UM_CONNECTION"
-  url: "nsp://wm-um.webmethods.svc.cluster.local:9000"
+  url: "nsp://wm-um:9000"
   user: "Administrator"
   password: "manage"
   useCSQ: "true"
@@ -293,10 +289,94 @@ license:
 mwsSamlResolverUrl: ""
 
 ## ============================================================================
+## Extended Settings (Additional watt.* Properties via Config Template)
+## ============================================================================
+## Add extra watt.* properties to application.properties per environment.
+## Uses settings.watt.* prefix per IBM Configuration Variables Template format.
+## Ref: https://www.ibm.com/docs/en/webmethods-integration/wm-microservices-runtime
+##
+## Two approaches are supported (both can be used simultaneously):
+##
+## 1. VALUES MAP: Define key=value pairs directly in values files.
+##    Use bare watt.* keys here — the chart auto-adds the "settings." prefix.
+##    Good for simple properties like URL aliases, thread pool sizes, etc.
+##
+## 2. FILE-BASED: Place an extended-settings.cnf file at:
+##    files/{environment}/config/extended-settings.cnf
+##    Use full settings.watt.* prefix in the file (included as-is).
+##    Good for complex or lengthy configurations maintained as standalone files.
+##
+## IMPORTANT: Do NOT duplicate properties already managed by the chart
+## (logging, SAP, SAML, etc.) - they are set automatically from their
+## own values sections.
+## ============================================================================
+extendedSettings:
+  enabled: false
+
+  # Key-value map of watt.* properties (chart auto-adds "settings." prefix)
+  # Example:
+  #   properties:
+  #     watt.server.url.alias.myapi: "/rest/myapi"
+  #     watt.server.url.alias.health: "/health"
+  #     watt.net.maxClientKeepaliveConns: "100"
+  #     watt.server.threadPool: "200"
+  properties: {}
+
+## ============================================================================
+## Custom Wrapper Configuration (custom_wrapper.conf)
+## ============================================================================
+## JVM wrapper configuration for the Tanuki Java Service Wrapper.
+## Environment-specific custom_wrapper.conf loaded from:
+##   files/{environment}/configuration/custom_wrapper.conf
+##
+## This file controls JVM options, memory settings, library paths, and
+## other wrapper-level configuration. It is read at JVM startup time
+## BEFORE the Integration Server starts.
+##
+## Common use cases:
+##   - Additional JVM system properties (wrapper.java.additional.4xx)
+##   - Java library paths (wrapper.java.library.path.*)
+##   - Wrapper timeouts and restart behavior
+##   - JMX configuration
+##
+## IMPORTANT: Memory settings (wrapper.java.initmemory, wrapper.java.maxmemory)
+## are already managed by the chart via jvm.minMemory and jvm.maxMemory.
+## Do NOT set them again in custom_wrapper.conf to avoid conflicts.
+##
+## File location in container:
+##   /opt/softwareag/IntegrationServer/instances/default/configuration/custom_wrapper.conf
+## ============================================================================
+customWrapper:
+  enabled: false
+
+## ============================================================================
+## Web Services Endpoint Configuration
+## ============================================================================
+## WS endpoint configuration files auto-discovered from:
+##   files/{environment}/config/endpoints/*.cnf
+##
+## Standard endpoint files (9 total):
+##   - providerHTTP.cnf, providerHTTPS.cnf, providerJMS.cnf
+##   - consumerHTTP.cnf, consumerHTTPS.cnf, consumerJMS.cnf
+##   - messageAddressingHTTP.cnf, messageAddressingHTTPS.cnf, messageAddressingJMS.cnf
+##
+## These XML-format files configure web service provider/consumer endpoints
+## and URL aliases visible in the IS Admin UI under Settings > Web Services.
+##
+## Files in config/endpoints/ are inside the PVC mount, so PostStart hook
+## copies them from a read-only ConfigMap temp mount to the writable PVC.
+##
+## Mount location: /opt/softwareag/IntegrationServer/instances/default/config/endpoints/
+## ============================================================================
+endpointConfigs:
+  enabled: false
+
+## ============================================================================
 ## JMS/JNDI Configuration (UM JMS Provider)
 ## ============================================================================
-## Mounts jms.cnf and jndi_JNDI.properties from files/{environment}/config/
-## into the MSR container for JMS connectivity via Universal Messaging.
+## Mounts jms.cnf from files/{environment}/config/ and auto-discovers
+## all JNDI provider files from files/{environment}/config/jndi/*
+## Supports multiple JNDI providers (e.g., jndi_JNDI1.properties, jndi_EventProvider.properties)
 jmsConfig:
   enabled: false
 
@@ -434,18 +514,48 @@ truststoreCertificates:
     # - certName: "truststore-partner-cert"
     #   alias: "partner-cert"
 
-## Package Configurations (Environment-Specific app.properties)
-## This section allows you to define environment-specific app.properties for
-## each custom package. These configurations are mounted at runtime via ConfigMap.
+## ============================================================================
+## Package Configurations (File-based)
+## ============================================================================
+## Environment-specific config files for IS packages are auto-discovered from:
+##   files/{environment}/packages/{PackageName}/config/{filename}
+##
+## To add package configs:
+##   1. Create the file at files/{env}/packages/{PkgName}/config/app.properties
+##   2. Set packageConfigs.enabled: true
+##   3. Files are auto-discovered via .Files.Glob (no values file changes needed)
+##   4. PostStart hook copies files to writable package directories
+##
+## Sensitive values should use ${ENV_VAR} syntax, with secrets in Azure Key Vault
+## ============================================================================
 packageConfigs:
-  enabled: false  # Set to true to enable package-specific configurations
-  packages: []
-    # Example package configuration:
-    # - name: MyPackage
-    #   appProperties: |
-    #     api.url=https://api.example.com/v1
-    #     api.key=${MY_PACKAGE_API_KEY}
-    #     timeout.seconds=30
+  enabled: false  # Set to true to enable file-based package configurations
+
+## ============================================================================
+## ESB App Configs (Outside IS Packages)
+## ============================================================================
+## External application config files auto-discovered from:
+##   files/{environment}/ESB_App_Configs/{Pkg}/{subpath}/{filename}
+##
+## To add ESB app configs:
+##   1. Create the file at files/{environment}/ESB_App_Configs/{Pkg}/{subpath}/filename
+##   2. Set esbAppConfigs.enabled: true
+##   3. Files are auto-discovered recursively via .Files.Glob
+##   4. PostStart hook copies to /opt/softwareag/ESB_App_Configs/ preserving directory structure
+## Note: ESB_App_Configs are environment-specific (under files/dev/, files/qa/, files/prod/)
+## ============================================================================
+esbAppConfigs:
+  enabled: false  # Set to true when ESB App Config files exist
+
+## ============================================================================
+## Global Variables (globalVariables.cnf)
+## ============================================================================
+## IS global variables configuration file loaded from:
+##   files/{environment}/config/globalVariables.cnf
+## Mounted to /opt/softwareag/IntegrationServer/config/globalVariables.cnf
+## ============================================================================
+globalVariables:
+  enabled: false  # Set to true to mount globalVariables.cnf
 
 ## ============================================================================
 ## File Access Control Configuration (WmPublic package - pub.file services)

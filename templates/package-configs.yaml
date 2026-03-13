@@ -1,40 +1,44 @@
 # ============================================================================
-# Package Configuration ConfigMap
+# Package Configuration ConfigMap (File-based)
 # ============================================================================
-# This ConfigMap contains environment-specific app.properties for custom packages.
-# Each package's configuration is stored as a separate key and mounted into the
-# package's root directory at runtime (e.g., /packages/AbTest/app.properties).
+# This ConfigMap contains environment-specific config files for custom packages.
+# Files are auto-discovered from files/{environment}/packages/*/config/*
+# Each file is stored with a key of {PackageName}--{filename} to encode
+# the source package and filename for the postStart copy hook.
 #
 # Usage:
-#   - Define package configs in values-{env}.yaml under packageConfigs.packages
-#   - Each package entry needs: name (package name) and appProperties (config content)
-#   - Sensitive values should use ${ENV_VAR} syntax and be injected via Key Vault
+#   1. Place config files at: files/{env}/packages/{PkgName}/config/{filename}
+#   2. Set packageConfigs.enabled: true in your values file
+#   3. Files are auto-discovered and mounted via ConfigMap
+#   4. PostStart hook copies them to the writable packages directory
 #
-# Example:
-#   packageConfigs:
-#     enabled: true
-#     packages:
-#       - name: MyPackage
-#         appProperties: |
-#           api.url=https://example.com
-#           api.key=${MY_PACKAGE_API_KEY}
+# Example file location:
+#   files/dev/packages/AbTest/config/app.properties
+#   -> ConfigMap key: AbTest--app.properties
+#   -> Copied to: /opt/softwareag/IntegrationServer/packages/AbTest/config/app.properties
 # ============================================================================
 {{- if .Values.packageConfigs.enabled }}
+{{- $pkgFiles := .Files.Glob (printf "files/%s/packages/*/config/*" .Values.environment) }}
+{{- if $pkgFiles }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}-package-configs
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
   annotations:
-    description: "Environment-specific package configurations"
+    description: "Environment-specific package configurations (file-based)"
 data:
-  {{- range .Values.packageConfigs.packages }}
-  # -------------------------------------------------------------------------
-  # Package: {{ .name }}
-  # -------------------------------------------------------------------------
-  {{ .name }}-app.properties: |
-{{ .appProperties | indent 4 }}
+  {{- $envPrefix := printf "files/%s/packages/" $.Values.environment }}
+  {{- range $path, $content := $pkgFiles }}
+  {{- $relPath := trimPrefix $envPrefix $path }}
+  {{- $parts := splitList "/" $relPath }}
+  {{- $pkgName := index $parts 0 }}
+  {{- $fileName := base $path }}
+  # Package: {{ $pkgName }} | File: {{ $fileName }}
+  {{ $pkgName }}--{{ $fileName }}: |
+{{ $.Files.Get $path | indent 4 }}
   {{- end }}
+{{- end }}
 {{- end }}

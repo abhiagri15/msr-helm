@@ -175,7 +175,9 @@ kubectl port-forward svc/wm-msr 5555:5555 -n webmethods
 | `caching.publicCacheManagers.enabled` | Enable public Ehcache cache managers | `false` |
 | `webMethodsCloud.enabled` | Enable webMethods Cloud / Integration Live connectivity | `false` |
 | `fileAccessControl.enabled` | Enable file access control for pub.file | `false` |
-| `packageConfigs.enabled` | Enable package-specific app.properties | `false` |
+| `packageConfigs.enabled` | Enable file-based package configs from `files/{env}/packages/*/config/*` | `false` |
+| `esbAppConfigs.enabled` | Enable environment-specific ESB App Configs from `files/{env}/ESB_App_Configs/**/*` | `false` |
+| `globalVariables.enabled` | Enable globalVariables.cnf from `files/{env}/config/globalVariables.cnf` | `false` |
 | `securityContext.pod.runAsUser` | Pod-level run-as user (sagadmin) | `1724` |
 | `securityContext.pod.runAsNonRoot` | Enforce non-root containers | `true` |
 | `securityContext.container.allowPrivilegeEscalation` | Prevent privilege escalation | `false` |
@@ -204,13 +206,14 @@ Adapter configurations are separated into dedicated files for better maintainabi
 
 ### Files Directory Structure
 
-The `files/` directory contains **environment-specific** configuration files mounted into the MSR container. The `environment` value (`dev`, `qa`, `prod`) drives which directory is used:
+The `files/` directory contains configuration files mounted into the MSR container. **All files are per-environment**, living under `files/{env}/` (driven by the `environment` value):
 
 ```
 files/
 ├── dev/
 │   ├── config/
 │   │   ├── aclmap_sm.cnf                   # ACL map configuration
+│   │   ├── globalVariables.cnf             # IS global variables
 │   │   ├── jms.cnf                         # JMS connection aliases (UM)
 │   │   ├── jndi/
 │   │   │   └── jndi_JNDI.properties        # JNDI provider configuration
@@ -218,6 +221,19 @@ files/
 │   │       ├── OrderCache.xml
 │   │       ├── SessionCache.xml
 │   │       └── LookupCache.xml
+│   ├── packages/                           # Per-environment package configs
+│   │   ├── AbTest/config/app.properties
+│   │   ├── AbTest2/config/app.properties
+│   │   └── SmClick3/config/app.properties  # Merged base LDAP + DEV OMS config
+│   ├── ESB_App_Configs/                    # Environment-specific ESB configs
+│   │   ├── SmOMS/                          # Deep nesting supported (3-4 levels)
+│   │   │   ├── app.properties
+│   │   │   ├── jwt/app.properties
+│   │   │   └── util/ldap/app.properties
+│   │   ├── SmPublic/
+│   │   │   └── *.properties
+│   │   └── SmSES_v33/
+│   │       └── *.properties
 │   ├── license/                            # License files (placeholders until real licenses)
 │   │   ├── licenseKey.xml                  # IS/MSR license key
 │   │   └── terracotta-license.key          # Terracotta BigMemory client license
@@ -233,9 +249,12 @@ files/
 | File/Directory | Purpose | Mount Path |
 |----------------|---------|------------|
 | `files/{env}/config/aclmap_sm.cnf` | ACL map configuration | `.../instances/default/config/aclmap_sm.cnf` |
+| `files/{env}/config/globalVariables.cnf` | IS global variables | `.../config/globalVariables.cnf` |
 | `files/{env}/config/jms.cnf` | JMS connection aliases | `.../config/jms.cnf` |
 | `files/{env}/config/jndi/jndi_JNDI.properties` | JNDI provider config | `.../config/jndi/jndi_JNDI.properties` |
 | `files/{env}/config/caching/*.xml` | Public Cache Manager Ehcache XMLs | `.../config/Caching/` (copied by postStart) |
+| `files/{env}/packages/*/config/*` | Package-specific configs | `.../packages/{PkgName}/config/` (copied by postStart) |
+| `files/{env}/ESB_App_Configs/**/*` | Environment-specific ESB app configs (deep nesting) | `/opt/softwareag/ESB_App_Configs/` (emptyDir + postStart copy) |
 | `files/{env}/integrationlive/` | webMethods Cloud configuration | `.../config/integrationlive/` |
 
 ---
@@ -451,7 +470,21 @@ For complete architecture diagrams, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 
 ## Version History
 
-### Current Version: 2.7.0 (February 2026)
+### Current Version: 2.9.0 (March 2026)
+
+- **Environment-Specific ESB App Configs** - Moved from shared `files/ESB_App_Configs/` to per-environment `files/{env}/ESB_App_Configs/` for dev/qa/prod isolation
+- **ESB_App_Configs Permission Fix** - Added `emptyDir` volume for `/opt/softwareag/ESB_App_Configs` to resolve write permission issue (`/opt/softwareag/` is root-owned, container runs as sagadmin)
+- **File-Based Package Configs** - Migrated from inline YAML to `.Files.Glob` auto-discovery from `files/{env}/packages/*/config/*`
+
+### 2.8.0 (February 2026)
+
+- **Real Client Package Configs** - SmClick3 with merged base LDAP + environment-specific OMS configs for dev/qa/prod
+- **Shared ESB App Configs** - 27 config files across SmOMS, SmPublic, SmSES_v33 with deep nesting support (3-4 levels)
+- **Global Variables** - `globalVariables.cnf` per environment with Windows-to-Linux path fix for K8s deployment
+- **Deep Path Encoding** - ConfigMap keys use `---` (triple dash) to encode `/` for deeply nested ESB file paths
+- **QA/Prod Package Configs Enabled** - SmClick3 configs now deployed to all environments
+
+### 2.7.0 (February 2026)
 
 - **IS License Management** - Environment-specific `licenseKey.xml` mounted via ConfigMap when `license.enabled: true`
 - **Terracotta Client License** - `terracotta-license.key` auto-mounted when `terracotta.enabled: true` with JVM property `-Dcom.tc.productkey.path`
@@ -506,5 +539,5 @@ This Helm chart is provided for use with licensed webMethods products from Softw
 ---
 
 *Maintained by: webMethods Architecture Team*
-*Chart Version: 2.7.0*
-*Last Updated: February 2026*
+*Chart Version: 2.9.0*
+*Last Updated: March 2026*

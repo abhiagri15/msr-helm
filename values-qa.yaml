@@ -1,9 +1,6 @@
 # QA/Test Environment Configuration
 # 3-node cluster with moderate resources
 
-global:
-  namespace: webmethods-qa
-
 environment: qa
 
 # MWS Single Sign-On - SAML Resolver URL (QA MWS instance)
@@ -194,6 +191,19 @@ healthProbes:
 license:
   enabled: false
 
+# Extended Settings (watt.* Properties for server.cnf)
+extendedSettings:
+  enabled: false
+  properties: {}
+
+# Custom Wrapper Configuration (custom_wrapper.conf)
+customWrapper:
+  enabled: true
+
+# Web Services Endpoint Configuration
+endpointConfigs:
+  enabled: true
+
 # JMS/JNDI Configuration (UM JMS Provider)
 jmsConfig:
   enabled: true
@@ -206,7 +216,7 @@ um:
     # Business UM Connection (Active-Passive Cluster)
     - connectionAlias: "IS_UM_BUSINESS"
       connectionEnabled: true
-      url: "nsp://um-business.webmethods-qa.svc.cluster.local:9000"
+      url: "nsp://um-business:9000"
       user: "Administrator"
       useCSQ: "true"
       csqSize: "-1"
@@ -216,7 +226,7 @@ um:
     # Logs UM Connection (Active-Active Cluster - Combined Service)
     - connectionAlias: "IS_UM_LOGS"
       connectionEnabled: true
-      url: "nsp://um-logs-combined.webmethods-qa.svc.cluster.local:9000"
+      url: "nsp://um-logs-combined:9000"
       user: "Administrator"
       useCSQ: "true"
       csqSize: "-1"
@@ -229,8 +239,8 @@ terracotta:
   enabled: true
   cacheManagerName: "IS_TERRACOTTA_CACHE"
   urls:
-    - "terracotta-0.terracotta-service.webmethods-qa.svc.cluster.local:9510"
-    - "terracotta-1.terracotta-service.webmethods-qa.svc.cluster.local:9510"
+    - "terracotta-0.terracotta-service:9510"
+    - "terracotta-1.terracotta-service:9510"
   # Only 2 Terracotta servers are deployed, matching StatefulSet replicas
 
 # Keystore Configuration (example - no actual files mounted)
@@ -257,7 +267,7 @@ azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "e3a6ce1d-19be-4cf0-ba22-de159adb0535"  # AKS Key Vault CSI provider identity Client ID
+  clientId: "91268854-32b8-46e3-9b0c-f7fe95c3da5c"  # Kubelet managed identity Client ID (webmethods-cluster)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault
@@ -318,3 +328,26 @@ truststoreCertificates:
       alias: "payment-gateway"
     - certName: "truststore-banking-partner"  # Banking partner certificate (Key Vault: test-truststore-banking-partner)
       alias: "banking-partner"
+
+# ============================================================================
+# PACKAGE CONFIGURATIONS (File-based)
+# ============================================================================
+# Package config files auto-discovered from files/qa/packages/*/config/*
+# Current packages: SmClick3
+# ============================================================================
+packageConfigs:
+  enabled: true
+
+# ============================================================================
+# ESB APP CONFIGS (Environment-Specific)
+# ============================================================================
+# ESB App config files auto-discovered recursively from files/qa/ESB_App_Configs/
+# ============================================================================
+esbAppConfigs:
+  enabled: true
+
+# ============================================================================
+# GLOBAL VARIABLES
+# ============================================================================
+globalVariables:
+  enabled: true

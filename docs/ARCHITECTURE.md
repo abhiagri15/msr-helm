@@ -4,8 +4,8 @@
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 2.7.0 |
-| Last Updated | February 2026 |
+| Version | 2.9.0 |
+| Last Updated | March 2026 |
 | Author | webMethods Platform Team |
 | Classification | Internal |
 
@@ -256,12 +256,20 @@ msr-helm/
 │   │   ├── license/                  # License files (placeholders)
 │   │   │   ├── licenseKey.xml        # IS/MSR license key
 │   │   │   └── terracotta-license.key # TC BigMemory client license
-│   │   └── integrationlive/          # webMethods Cloud configuration
-│   │       ├── accounts.cnf
-│   │       ├── connections.cnf
-│   │       └── applications/*.cnf
+│   │   ├── integrationlive/          # webMethods Cloud configuration
+│   │   │   ├── accounts.cnf
+│   │   │   ├── connections.cnf
+│   │   │   └── applications/*.cnf
+│   │   └── packages/                # Package-specific config files (file-based)
+│   │       ├── AbTest/config/app.properties
+│   │       ├── AbTest2/config/app.properties
+│   │       └── SmClick3/config/app.properties   # Merged base LDAP + env OMS config
 │   ├── qa/                 # QA environment files (same structure as dev)
-│   └── prod/               # Production environment files (same structure as dev)
+│   ├── prod/               # Production environment files (same structure as dev)
+│   │   ├── ESB_App_Configs/    # Environment-specific ESB configs (per env)
+│   │   │   ├── SmOMS/          # Deep nesting: app.properties, jwt/*, util/ldap/*
+│   │   │   ├── SmPublic/       # Public utility configs
+│   │   │   └── SmSES_v33/      # SES application configs
 ├── docs/                   # Documentation
 │   ├── ARCHITECTURE.md     # This document
 │   ├── IMPLEMENTATION.md   # Deployment guides
@@ -275,12 +283,16 @@ msr-helm/
     ├── secretproviderclass.yaml  # Azure Key Vault CSI integration
     ├── hpa.yaml            # Horizontal Pod Autoscaler
     ├── serviceaccount.yaml # RBAC configuration
-    ├── package-configs.yaml       # Package-specific app.properties
+    ├── package-configs.yaml       # Package config files (auto-discovered from files/{env}/packages/)
     └── webmethods-cloud-configmap.yaml  # webMethods Cloud config
 ```
 
+> **Note:** `configmap.yaml` also contains ESB App Configs ConfigMap (per-env, from `files/{env}/ESB_App_Configs/**/*`) and globalVariables ConfigMap (per-env, from `files/{env}/config/globalVariables.cnf`).
+
 **Key design decisions:**
 - **Environment-specific files**: The `files/` directory is organized by environment (`dev/`, `qa/`, `prod/`). The `environment` value in each values file drives which directory is used at deploy time via `files/{{ .Values.environment }}/`.
+- **ESB App Configs**: ESB_App_Configs are environment-specific, stored at `files/{env}/ESB_App_Configs/` (e.g., `files/dev/ESB_App_Configs/SmOMS/util/ldap/app.properties`). The glob uses `files/{env}/ESB_App_Configs/**/*` for recursive deep nesting. An `emptyDir` volume is mounted at `/opt/softwareag/ESB_App_Configs` because the parent directory is root-owned and the container runs as `sagadmin`.
+- **Deep path encoding**: ConfigMap keys encode full relative paths using `---` (triple dash) to replace `/` separators (e.g., `SmOMS---util---ldap---app.properties`), avoiding collisions when multiple files share the same filename.
 - **Adapter separation**: Adapter configurations are in the `adapters/` folder to improve maintainability when dealing with many JDBC or SAP connections. This allows different teams to manage adapter configs independently.
 
 ---
@@ -779,6 +791,7 @@ Storage Classes:
 | ConfigMap (license) | /opt/.../config/licenseKey.xml | IS license key | Updated on upgrade |
 | ConfigMap (tc-license) | /opt/.../config/terracotta-license.key | TC client license | Updated on upgrade |
 | EmptyDir | /opt/.../kv-keystores | Converted keystores | Ephemeral |
+| EmptyDir | /opt/softwareag/ESB_App_Configs | ESB app configs (postStart copy target) | Ephemeral |
 
 ---
 

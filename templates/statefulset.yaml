@@ -2,12 +2,14 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "webmethods-msr.fullname" . }}
-  namespace: {{ .Values.global.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "webmethods-msr.labels" . | nindent 4 }}
 spec:
   serviceName: {{ include "webmethods-msr.fullname" . }}
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   podManagementPolicy: {{ .Values.podManagementPolicy | default "OrderedReady" }}
   updateStrategy:
     type: {{ .Values.updateStrategy.type | default "RollingUpdate" }}
@@ -267,10 +269,10 @@ spec:
 
           while [ $ELAPSED -lt $MAX_WAIT ]; do
             # Check if any Terracotta pods exist
-            POD_COUNT=$(kubectl get pods -l app=terracotta -n {{ .Values.global.namespace }} --no-headers 2>/dev/null | wc -l)
+            POD_COUNT=$(kubectl get pods -l app=terracotta -n {{ .Release.Namespace }} --no-headers 2>/dev/null | wc -l)
 
             if [ "$POD_COUNT" -eq "0" ]; then
-              echo "WARNING: No Terracotta pods found in namespace {{ .Values.global.namespace }}"
+              echo "WARNING: No Terracotta pods found in namespace {{ .Release.Namespace }}"
               echo "Terracotta is enabled in MSR config but no Terracotta pods exist!"
               echo "MSR will start anyway, but Terracotta cache will need to be started manually."
               echo "To fix: Deploy Terracotta cluster or set terracotta.enabled=false in MSR values"
@@ -278,7 +280,7 @@ spec:
             fi
 
             # Terracotta pods exist - wait for them to be ready
-            if kubectl wait --for=condition=ready pod -l app=terracotta -n {{ .Values.global.namespace }} --timeout=30s 2>/dev/null; then
+            if kubectl wait --for=condition=ready pod -l app=terracotta -n {{ .Release.Namespace }} --timeout=30s 2>/dev/null; then
               echo "All Terracotta servers are ready. Starting MSR..."
               exit 0
             fi
@@ -419,6 +421,54 @@ spec:
                 fi
                 {{- end }}
 
+                {{- if .Values.packageConfigs.enabled }}
+                {{- $pkgFiles := .Files.Glob (printf "files/%s/packages/*/config/*" .Values.environment) }}
+                {{- if $pkgFiles }}
+                # Copy package config files from read-only ConfigMap to writable packages directory
+                # Files are auto-discovered from files/{env}/packages/*/config/*
+                {{- $envPrefix := printf "files/%s/packages/" $.Values.environment }}
+                {{- range $path, $content := $pkgFiles }}
+                {{- $relPath := trimPrefix $envPrefix $path }}
+                {{- $parts := splitList "/" $relPath }}
+                {{- $pkgName := index $parts 0 }}
+                {{- $fileName := base $path }}
+                mkdir -p "/opt/softwareag/IntegrationServer/packages/{{ $pkgName }}/config"
+                cp "/tmp/package-configs/{{ $pkgName }}--{{ $fileName }}" "/opt/softwareag/IntegrationServer/packages/{{ $pkgName }}/config/{{ $fileName }}"
+                chmod 644 "/opt/softwareag/IntegrationServer/packages/{{ $pkgName }}/config/{{ $fileName }}"
+                {{- end }}
+                {{- end }}
+                {{- end }}
+
+                {{- if .Values.esbAppConfigs.enabled }}
+                {{- $esbFiles := .Files.Glob (printf "files/%s/ESB_App_Configs/**/*" .Values.environment) }}
+                {{- if $esbFiles }}
+                # Copy ESB App Config files from read-only ConfigMap to writable ESB directory
+                # Files are auto-discovered from files/{environment}/ESB_App_Configs/ (env-specific)
+                # Deep directory structure is preserved in the pod
+                {{- $esbPrefix := printf "files/%s/ESB_App_Configs/" $.Values.environment }}
+                {{- range $path, $content := $esbFiles }}
+                {{- $relPath := trimPrefix $esbPrefix $path }}
+                {{- $relDir := dir $relPath }}
+                mkdir -p "/opt/softwareag/ESB_App_Configs/{{ $relDir }}"
+                cp "/tmp/esb-app-configs/{{ replace "/" "---" $relPath }}" "/opt/softwareag/ESB_App_Configs/{{ $relPath }}"
+                chmod 644 "/opt/softwareag/ESB_App_Configs/{{ $relPath }}"
+                {{- end }}
+                {{- end }}
+                {{- end }}
+
+                {{- if .Values.endpointConfigs.enabled }}
+                {{- $endpointFiles := .Files.Glob (printf "files/%s/config/endpoints/*.cnf" .Values.environment) }}
+                {{- if $endpointFiles }}
+                # Copy WS endpoint .cnf files from read-only ConfigMap to writable PVC
+                # Files are auto-discovered from files/{env}/config/endpoints/*.cnf
+                mkdir -p "/opt/softwareag/IntegrationServer/instances/default/config/endpoints"
+                {{- range $path, $content := $endpointFiles }}
+                cp "/tmp/endpoint-configs/{{ base $path }}" "/opt/softwareag/IntegrationServer/instances/default/config/endpoints/{{ base $path }}"
+                chmod 644 "/opt/softwareag/IntegrationServer/instances/default/config/endpoints/{{ base $path }}"
+                {{- end }}
+                {{- end }}
+                {{- end }}
+
                 {{- if .Values.caching.publicCacheManagers.enabled }}
                 # Copy public cache manager XMLs from read-only ConfigMap to writable Caching directory
                 # Ehcache needs write access to migrate XMLs to 2.8.x format at startup
@@ -521,14 +571,48 @@ spec:
           mountPath: {{ .Values.azureKeyVault.mountPath }}
           readOnly: true
         {{- end }}
-        {{- /* Package-specific app.properties from ConfigMap */}}
+        {{- /* Package-specific config files - mounted to temp dir, copied by postStart */}}
         {{- if .Values.packageConfigs.enabled }}
-        {{- range .Values.packageConfigs.packages }}
+        {{- $pkgFiles := .Files.Glob (printf "files/%s/packages/*/config/*" .Values.environment) }}
+        {{- if $pkgFiles }}
         - name: package-configs
-          mountPath: /opt/softwareag/IntegrationServer/packages/{{ .name }}/app.properties
-          subPath: {{ .name }}-app.properties
+          mountPath: /tmp/package-configs
           readOnly: true
         {{- end }}
+        {{- end }}
+        {{- /* ESB App Config files - mounted to temp dir, copied by postStart */}}
+        {{- if .Values.esbAppConfigs.enabled }}
+        {{- $esbFiles := .Files.Glob (printf "files/%s/ESB_App_Configs/**/*" .Values.environment) }}
+        {{- if $esbFiles }}
+        - name: esb-app-configs
+          mountPath: /tmp/esb-app-configs
+          readOnly: true
+        - name: esb-app-configs-data
+          mountPath: /opt/softwareag/ESB_App_Configs
+        {{- end }}
+        {{- end }}
+        {{- /* Web Services Endpoint configs - mounted to temp dir, copied by postStart */}}
+        {{- if .Values.endpointConfigs.enabled }}
+        {{- $endpointFiles := .Files.Glob (printf "files/%s/config/endpoints/*.cnf" .Values.environment) }}
+        {{- if $endpointFiles }}
+        - name: endpoint-configs
+          mountPath: /tmp/endpoint-configs
+          readOnly: true
+        {{- end }}
+        {{- end }}
+        {{- /* Custom Wrapper Configuration (custom_wrapper.conf) - direct read-only mount */}}
+        {{- if .Values.customWrapper.enabled }}
+        - name: custom-wrapper
+          mountPath: /opt/softwareag/IntegrationServer/instances/default/configuration/custom_wrapper.conf
+          subPath: custom_wrapper.conf
+          readOnly: true
+        {{- end }}
+        {{- /* Global Variables - mounted directly to IS config */}}
+        {{- if .Values.globalVariables.enabled }}
+        - name: global-variables
+          mountPath: /opt/softwareag/IntegrationServer/config/globalVariables.cnf
+          subPath: globalVariables.cnf
+          readOnly: true
         {{- end }}
         {{- /* File Access Control configuration for WmPublic package */}}
         {{- if .Values.fileAccessControl.enabled }}
@@ -561,10 +645,13 @@ spec:
           mountPath: /opt/softwareag/IntegrationServer/config/jms.cnf
           subPath: jms.cnf
           readOnly: true
+        {{- $jndiFiles := .Files.Glob (printf "files/%s/config/jndi/*" .Values.environment) }}
+        {{- range $path, $content := $jndiFiles }}
         - name: jms-config
-          mountPath: /opt/softwareag/IntegrationServer/config/jndi/jndi_JNDI.properties
-          subPath: jndi_JNDI.properties
+          mountPath: /opt/softwareag/IntegrationServer/config/jndi/{{ base $path }}
+          subPath: {{ base $path }}
           readOnly: true
+        {{- end }}
         {{- end }}
         {{- /* Terracotta Client License (required for BigMemory features) */}}
         {{- if .Values.terracotta.enabled }}
@@ -637,11 +724,31 @@ spec:
           volumeAttributes:
             secretProviderClass: {{ include "webmethods-msr.fullname" . }}-keyvault-sync
       {{- end }}
-      {{- /* Package-specific configurations volume */}}
+      {{- /* Package-specific configurations volume (file-based) */}}
       {{- if .Values.packageConfigs.enabled }}
+      {{- $pkgFiles := .Files.Glob (printf "files/%s/packages/*/config/*" .Values.environment) }}
+      {{- if $pkgFiles }}
       - name: package-configs
         configMap:
           name: {{ include "webmethods-msr.fullname" . }}-package-configs
+      {{- end }}
+      {{- end }}
+      {{- /* ESB App Configs volume (file-based, environment-specific) */}}
+      {{- if .Values.esbAppConfigs.enabled }}
+      {{- $esbFiles := .Files.Glob (printf "files/%s/ESB_App_Configs/**/*" .Values.environment) }}
+      {{- if $esbFiles }}
+      - name: esb-app-configs
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-esb-app-configs
+      - name: esb-app-configs-data
+        emptyDir: {}
+      {{- end }}
+      {{- end }}
+      {{- /* Global Variables volume */}}
+      {{- if .Values.globalVariables.enabled }}
+      - name: global-variables
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-global-variables
       {{- end }}
       {{- /* File Access Control configuration volume */}}
       {{- if .Values.fileAccessControl.enabled }}
@@ -692,6 +799,24 @@ spec:
         secret:
           secretName: {{ .Values.sapAdapter.snc.secretName | default "sap-snc-credentials" }}
           defaultMode: 0440
+      {{- end }}
+      {{- /* Web Services Endpoint Configuration volume */}}
+      {{- if .Values.endpointConfigs.enabled }}
+      {{- $endpointFiles := .Files.Glob (printf "files/%s/config/endpoints/*.cnf" .Values.environment) }}
+      {{- if $endpointFiles }}
+      - name: endpoint-configs
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-endpoint-configs
+      {{- end }}
+      {{- end }}
+      {{- /* Custom Wrapper Configuration volume */}}
+      {{- if .Values.customWrapper.enabled }}
+      - name: custom-wrapper
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-custom-wrapper
+          items:
+          - key: custom_wrapper.conf
+            path: custom_wrapper.conf
       {{- end }}
       {{- /* webMethods Cloud configuration volumes */}}
       {{- if .Values.webMethodsCloud.enabled }}

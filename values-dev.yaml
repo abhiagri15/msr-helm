@@ -1,9 +1,6 @@
 ﻿# Development Environment Configuration
 # 2-node cluster with reduced resources
 
-global:
-  namespace: webmethods
-
 environment: dev
 
 # MWS Single Sign-On - SAML Resolver URL (Dev MWS instance)
@@ -274,6 +271,46 @@ healthProbes:
 license:
   enabled: false
 
+# ============================================================================
+# Extended Settings (watt.* Properties via Config Template)
+# ============================================================================
+# Additional watt.* properties added to application.properties at startup.
+# Uses settings.watt.* prefix per IBM Configuration Variables Template format.
+# Supports both inline properties map AND file-based extended-settings.cnf
+#
+# In the properties map below, use bare watt.* keys — chart auto-adds "settings." prefix.
+# In the .cnf file, use full settings.watt.* prefix.
+# ============================================================================
+extendedSettings:
+  enabled: true
+
+  properties:
+    # URL Aliases (environment-specific)
+    # watt.server.url.alias.myapi: "/rest/myapi"
+    # watt.server.url.alias.health: "/health"
+    # Thread pool and connection tuning (dev values)
+    # watt.net.maxClientKeepaliveConns: "50"
+    # watt.server.threadPool: "200"
+
+# ============================================================================
+# Custom Wrapper Configuration (custom_wrapper.conf)
+# ============================================================================
+# JVM wrapper configuration loaded from files/dev/configuration/custom_wrapper.conf
+# Controls JVM options, library paths, wrapper timeouts, etc.
+# Read at JVM startup BEFORE Integration Server starts
+# ============================================================================
+customWrapper:
+  enabled: true
+
+# ============================================================================
+# Web Services Endpoint Configuration
+# ============================================================================
+# Endpoint .cnf files auto-discovered from files/dev/config/endpoints/*.cnf
+# Mounted to /opt/softwareag/.../config/endpoints/ via PostStart copy
+# ============================================================================
+endpointConfigs:
+  enabled: true
+
 # JMS/JNDI Configuration (UM JMS Provider)
 jmsConfig:
   enabled: true
@@ -286,7 +323,7 @@ um:
     # Business UM Connection (Active-Passive Cluster)
     - connectionAlias: "IS_UM_BUSINESS"
       connectionEnabled: true
-      url: "nsp://um-business.webmethods.svc.cluster.local:9000"
+      url: "nsp://um-business:9000"
       user: "Administrator"
       useCSQ: "true"
       csqSize: "-1"
@@ -296,7 +333,7 @@ um:
     # Logs UM Connection (Active-Active Cluster - Combined Service)
     - connectionAlias: "IS_UM_LOGS"
       connectionEnabled: true
-      url: "nsp://um-logs-combined.webmethods.svc.cluster.local:9000"
+      url: "nsp://um-logs-combined:9000"
       user: "Administrator"
       useCSQ: "true"
       csqSize: "-1"
@@ -321,8 +358,8 @@ terracotta:
   enabled: false
   cacheManagerName: "IS_TERRACOTTA_CACHE"
   urls:
-    - "terracotta-0.terracotta-service.webmethods.svc.cluster.local:9510"
-    - "terracotta-1.terracotta-service.webmethods.svc.cluster.local:9510"
+    - "terracotta-0.terracotta-service:9510"
+    - "terracotta-1.terracotta-service:9510"
   # Only 2 Terracotta servers are deployed, matching StatefulSet replicas
 
 # Keystore Configuration (example - no actual files mounted in dev)
@@ -356,7 +393,9 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 5
   targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: 80
+  # Memory metric disabled for JVM apps - JVM heap is constant regardless of load,
+  # causing HPA to never scale down. Scale on CPU only.
+  targetMemoryUtilizationPercentage: false
 
 # ============================================================================
 # Azure Key Vault Integration
@@ -401,7 +440,7 @@ azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "52d37338-13ab-4a9e-982a-3678e86bc980"  # Azure Key Vault Secrets Provider identity Client ID (webmethods-cluster)
+  clientId: "91268854-32b8-46e3-9b0c-f7fe95c3da5c"  # Kubelet managed identity Client ID (webmethods-cluster)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault
@@ -477,116 +516,34 @@ truststoreCertificates:
       alias: "banking-partner"
 
 # ============================================================================
-# PACKAGE CONFIGURATIONS (Environment-Specific app.properties)
+# PACKAGE CONFIGURATIONS (File-based)
 # ============================================================================
-# This section allows you to define environment-specific app.properties for
-# each custom package. These configurations are mounted at runtime via ConfigMap,
-# following the 12-Factor App principle of separating config from code.
-#
-# Benefits:
-# - Single Docker image for all environments
-# - Config changes without rebuilding image
-# - GitOps-friendly (values files are source of truth)
-# - Easy rollback via Helm
-#
-# For sensitive values (API keys, passwords):
-# - Store in Azure Key Vault
-# - Reference using ${ENV_VAR} syntax
-# - Add corresponding secrets to secretproviderclass.yaml
-#
-# Example usage:
-#   packageConfigs:
-#     enabled: true
-#     packages:
-#       - name: MyPackage
-#         appProperties: |
-#           api.url=https://dev-api.example.com
-#           api.key=${MY_PACKAGE_API_KEY}
+# Package config files are auto-discovered from files/dev/packages/*/config/*
+# Current packages: AbTest, AbTest2
+# To add a new package config, create: files/dev/packages/{PkgName}/config/app.properties
+# Sensitive values use ${ENV_VAR} syntax, with secrets in Azure Key Vault
 # ============================================================================
 packageConfigs:
   enabled: true
-  packages:
-    # -------------------------------------------------------------------------
-    # AbTest Package Configuration - Development Environment
-    # -------------------------------------------------------------------------
-    - name: AbTest
-      appProperties: |
-        # API Configuration - Dev Environment
-        apibaseurl=https://api-dev.demo.com/v1
-        apiKey=${ABTEST_API_KEY}
 
-        # Agency/Program IDs - Dev
-        agencyId=U5555555555555555-DEV-AB
-        programId=8555555555555555-DEV-AB
+# ============================================================================
+# ESB APP CONFIGS (Environment-Specific)
+# ============================================================================
+# ESB App config files auto-discovered recursively from files/dev/ESB_App_Configs/
+# Current packages: SmOMS, SmPublic, SmSES_v33 (with deep subdirectory structure)
+# Copied to /opt/softwareag/ESB_App_Configs/ preserving full directory tree
+# ============================================================================
+esbAppConfigs:
+  enabled: true
 
-        # XML Namespace
-        xmlns=http://www.pj.com/api/v1/
-
-        # Form/Field IDs - Dev Environment
-        projectChecklistFormId=8555555555555-DEV-AB
-        singleLineAttachmentId=15555555555555-DEV-AB
-        meterNumberDataFieldId=U4444444444444-DEV-AB
-        meterSetDateDataFieldId=G444444444444-DEV-AB
-        revisedSiteDiagramAttachmentId=ERRRRRRRRRRRRR-DEV-AB
-        siteDiagramAttachmentId=9EEEEEEEEEEE-DEV-AB
-        hostCustomerSectorFieldId=4DDDDDDDDDDDDDD-DEV-AB
-        inspectionFormId=FFFFFFFFFF-DEV-AB
-        ahjFormId=FFFFFFFFFF-DEV-AB
-        applicationFormId=GGGGGGGG-DEV-AB
-
-        # File Paths - Dev Environment
-        attachmentFilePath=/dev/smud456Single Line Drawings
-        projectsFilePath=/dev/smud456/ProjectsExport
-        siteDiagramFilePath=/dev/smud123/Site Drawings
-
-        # Security Config
-        hashAlgorithm=HmacSHA1
-        TOTPReturnDigits=60
-
-    # -------------------------------------------------------------------------
-    # AbTest2 Package Configuration - Development Environment
-    # -------------------------------------------------------------------------
-    - name: AbTest2
-      appProperties: |
-        # API Configuration - Dev Environment
-        apibaseurl=https://api-dev.demo.com/v1
-        apiKey=${ABTEST2_API_KEY}
-
-        # Agency/Program IDs - Dev
-        agencyId=U5222222222222222-DEV
-        programId=8555555555555555-DEV
-
-        # XML Namespace
-        xmlns=http://www.pj.com/api/v1/
-
-        # Form/Field IDs - Dev Environment
-        projectChecklistFormId=8555555555555-DEV
-        singleLineAttachmentId=15555555555555-DEV
-        meterNumberDataFieldId=U4444444444444-DEV
-        meterSetDateDataFieldId=G444444444444-DEV
-        revisedSiteDiagramAttachmentId=ERRRRRRRRRRRRR-DEV
-        siteDiagramAttachmentId=9EEEEEEEEEEE-DEV
-        hostCustomerSectorFieldId=4DDDDDDDDDDDDDD-DEV
-        inspectionFormId=FFFFFFFFFF-DEV
-        ahjFormId=FFFFFFFFFF-DEV
-        applicationFormId=GGGGGGGG-DEV
-
-        # File Paths - Dev Environment
-        attachmentFilePath=/dev/smud456Single Line Drawings
-        projectsFilePath=/dev/smud456/ProjectsExport
-        siteDiagramFilePath=/dev/smud123/Site Drawings
-
-        # Security Config
-        hashAlgorithm=HmacSHA1
-        TOTPReturnDigits=60
-
-    # -------------------------------------------------------------------------
-    # AbTest3 Package Configuration - Development Environment
-    # -------------------------------------------------------------------------
-    # - name: AbTest3
-    #   appProperties: |
-    #     # Add AbTest3 dev-specific properties here
-    #     example.property=dev-value
+# ============================================================================
+# GLOBAL VARIABLES (globalVariables.cnf)
+# ============================================================================
+# Loaded from files/dev/config/globalVariables.cnf
+# Mounted to /opt/softwareag/IntegrationServer/config/globalVariables.cnf
+# ============================================================================
+globalVariables:
+  enabled: true
 
 # ============================================================================
 # FILE ACCESS CONTROL Configuration (WmPublic package - pub.file services)
