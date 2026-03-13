@@ -72,7 +72,7 @@ persistence:
 # JDBC POOL Configuration (MSR Internal Database for ISInternal, Xref, etc.)
 # ============================================================================
 # JDBC Pools are used by MSR internal functions like ISInternal, ISDashboardStats, Xref
-# Credentials stored in Azure Key Vault: test-jdbc-pool-url, test-jdbc-pool-username, test-jdbc-pool-password
+# Credentials stored in Azure Key Vault: qa-jdbc-pool-url, qa-jdbc-pool-username, qa-jdbc-pool-password
 # Pool sizing configuration is environment-specific and non-sensitive
 jdbcPool:
   enabled: true
@@ -102,7 +102,7 @@ jdbcPool:
 # ============================================================================
 # JDBC Adapter connections are used by business integration services
 # Azure SQL Database: wm-sql-abi-qa.database.windows.net
-# Credentials stored in Azure Key Vault: test-jdbc-adapter-url, test-jdbc-adapter-username, test-jdbc-adapter-password
+# Credentials stored in Azure Key Vault: qa-jdbc-adapter-url, qa-jdbc-adapter-username, qa-jdbc-adapter-password
 # Each connection can have different pool sizing and transaction settings
 jdbcAdapter:
   enabled: true
@@ -209,7 +209,7 @@ jmsConfig:
   enabled: true
 
 # Universal Messaging Configuration
-# Passwords stored in Azure Key Vault: test-um-biz-password, test-um-logs-password
+# Passwords stored in Azure Key Vault: qa-um-biz-password, qa-um-logs-password
 um:
   enabled: true
   connections:
@@ -272,13 +272,13 @@ azureKeyVault:
 
   # Environment-specific prefix for secret names in Azure Key Vault
   # Secrets will be retrieved as: {secretKeyPrefix}-{secretName}
-  # Example: test-jdbc-pool-password, test-keystore-password, test-um-password
-  secretKeyPrefix: "test"
+  # Example: qa-jdbc-pool-password, qa-keystore-password, qa-um-password
+  secretKeyPrefix: "qa"
 
   # KEYSTORE Certificates (Certificate + Private Key)
   # These certificates represent YOUR server's identity
   # Upload to Azure Key Vault as Certificate with private key (PKCS12/PFX)
-  # Passwords stored in Azure Key Vault: test-keystore-password, test-keyalias-password
+  # Passwords stored in Azure Key Vault: qa-keystore-password, qa-keyalias-password
   certificates:
     - certName: "wm-cer"
       fileName: "wm_keystore.p12"
@@ -302,7 +302,7 @@ azureKeyVault:
 # Truststore contains trusted certificates (CA certs, partner certs)
 # Each certificate should be uploaded to Azure Key Vault as Certificate object
 # WITHOUT private key (just the .crt file)
-# Certificate names in Key Vault are prefixed with secretKeyPrefix: test-truststore-root-ca, etc.
+# Certificate names in Key Vault are prefixed with secretKeyPrefix: qa-truststore-root-ca, etc.
 # ============================================================================
 truststoreCertificates:
   enabled: true
@@ -311,22 +311,22 @@ truststoreCertificates:
   description: "webMethods Truststore from Azure Key Vault (QA)"
   type: "PKCS12"
   provider: "SUN"
-  # Password stored in Azure Key Vault: test-truststore-password
+  # Password stored in Azure Key Vault: qa-truststore-password
   # Password injected via environment variable from Azure Key Vault
 
   # List of trusted certificates to include in truststore
   # Each certificate must exist in Azure Key Vault (Secrets section as PEM files)
   # These certificates are public certificates only (no private keys)
   certificates:
-    - certName: "truststore-root-ca"          # Root CA certificate (Key Vault: test-truststore-root-ca)
+    - certName: "truststore-root-ca"          # Root CA certificate (Key Vault: qa-truststore-root-ca)
       alias: "root-ca"                        # Alias in PKCS12 truststore
-    - certName: "truststore-intermediate-ca"  # Intermediate CA certificate (Key Vault: test-truststore-intermediate-ca)
+    - certName: "truststore-intermediate-ca"  # Intermediate CA certificate (Key Vault: qa-truststore-intermediate-ca)
       alias: "intermediate-ca"
-    - certName: "truststore-partner-cert"     # Partner's public certificate (Key Vault: test-truststore-partner-cert)
+    - certName: "truststore-partner-cert"     # Partner's public certificate (Key Vault: qa-truststore-partner-cert)
       alias: "partner-cert"
-    - certName: "truststore-payment-gateway"  # Payment Gateway partner certificate (Key Vault: test-truststore-payment-gateway)
+    - certName: "truststore-payment-gateway"  # Payment Gateway partner certificate (Key Vault: qa-truststore-payment-gateway)
       alias: "payment-gateway"
-    - certName: "truststore-banking-partner"  # Banking partner certificate (Key Vault: test-truststore-banking-partner)
+    - certName: "truststore-banking-partner"  # Banking partner certificate (Key Vault: qa-truststore-banking-partner)
       alias: "banking-partner"
 
 # ============================================================================
