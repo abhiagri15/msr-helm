@@ -14,7 +14,7 @@ replicaCount: 3
 ## The tag below is a fallback for manual deploys only.
 image:
   repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
-  tag: "11.1.0.6-qa"
+  tag: "11.1.0.6-build-272"
   pullPolicy: IfNotPresent
 
 service:
@@ -267,7 +267,7 @@ azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "584e663c-77bd-4814-81f0-3307722b4d23"  # CSI Secrets Store addon identity (webmethods-cluster)
+  clientId: "3fc009ab-275b-45eb-b1fd-aaf9c5606576"  # CSI Secrets Store addon identity (webmethods-cluster)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault

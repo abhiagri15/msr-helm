@@ -18,7 +18,7 @@ replicaCount: 2
 ## The tag below is a fallback for manual deploys only.
 image:
   repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
-  tag: "11.1.0.6-dev"
+  tag: "11.1.0.6-build-272"
   pullPolicy: Always
 
 service:
@@ -431,16 +431,16 @@ autoscaling:
 #      --certificate-permissions get list
 #
 # For this cluster:
-#   Kubelet Identity Client ID: 4262ea8e-4ab7-4b5e-bb44-d672589f92c6
-#   Kubelet Identity Object ID: 08e3ed47-ec8c-47bf-b23e-31284b6e691f
-#   CSI Driver Identity Client ID: 584e663c-77bd-4814-81f0-3307722b4d23
-#   CSI Driver Identity Object ID: 63d666cb-e7e8-4bf0-8030-63414fd0ac31 (use this for Key Vault policy)
+#   Kubelet Identity Client ID: d77e7a36-6521-4871-862a-8f4c7eadc320
+#   Kubelet Identity Object ID: 2b63c61c-c99a-4d40-83d6-a61b176c65c4
+#   CSI Driver Identity Client ID: 3fc009ab-275b-45eb-b1fd-aaf9c5606576
+#   CSI Driver Identity Object ID: 5bf6c39e-d0c8-4f61-b2a9-b4d7527e864d (use this for Key Vault policy)
 # ============================================================================
 azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "584e663c-77bd-4814-81f0-3307722b4d23"  # CSI Secrets Store addon identity (more reliable on autoscaled nodes)
+  clientId: "3fc009ab-275b-45eb-b1fd-aaf9c5606576"  # CSI Secrets Store addon identity (more reliable on autoscaled nodes)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault
