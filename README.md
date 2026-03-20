@@ -158,6 +158,8 @@ kubectl port-forward svc/wm-msr 5555:5555 -n wm-dev
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
+| `fullnameOverride` | Override resource names (ignores release name) | `""` |
+| `nameOverride` | Override `app.kubernetes.io/name` label | `""` |
 | `environment` | Environment identifier (`dev`, `qa`, `prod`) — drives file selection from `files/{environment}/` | `""` |
 | `replicaCount` | Number of MSR replicas | `2` |
 | `image.repository` | Container image repository | `abiwebmethods.azurecr.io/webmethods-microservicesruntime` |
@@ -337,6 +339,57 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment-topologies) for detai
 
 ---
 
+## Multi-Application Deployment
+
+The chart supports deploying **multiple MSR applications in the same namespace** using different Helm release names. All Kubernetes resource names and labels are derived from the release name automatically.
+
+### Deploy Multiple Apps
+
+```bash
+# Application A
+helm upgrade --install msr-app-a . -n webmethods \
+  -f values.yaml -f values-app-a.yaml
+
+# Application B
+helm upgrade --install msr-app-b . -n webmethods \
+  -f values.yaml -f values-app-b.yaml
+```
+
+Each deployment gets its own StatefulSet, Service, ConfigMap, etc., named after the release (`msr-app-a`, `msr-app-b`).
+
+### How It Works
+
+| Helm Variable | Used For |
+|---------------|----------|
+| `.Release.Name` | Resource names, `app` label, service name |
+| `.Values.fullnameOverride` | Optional override for resource naming (ignores release name) |
+| `.Values.nameOverride` | Optional override for `app.kubernetes.io/name` label |
+
+### Per-App Values File
+
+Create a separate values file for each application with app-specific configuration:
+
+```yaml
+# values-app-a.yaml
+replicaCount: 2
+image:
+  tag: "app-a-latest"
+
+# Update affinity to match release name
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app: msr-app-a    # Must match release name
+```
+
+> **Note:** The `app` label in affinity `matchLabels` should match the release name used in `helm upgrade --install`.
+
+---
+
 ## Azure Key Vault Secret Naming
 
 All secrets use environment-specific prefixes with friendly naming conventions:
@@ -470,7 +523,12 @@ For complete architecture diagrams, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 
 ## Version History
 
-### Current Version: 2.9.0 (March 2026)
+### Current Version: 2.10.0 (March 2026)
+
+- **Dynamic Release Naming** - Chart now uses `.Release.Name` for all resource names and labels instead of hardcoded `wm-msr`, enabling multiple MSR deployments in the same namespace from a single chart copy
+- **`fullnameOverride` Support** - Optional `fullnameOverride` value to explicitly set resource names regardless of release name
+
+### 2.9.0 (March 2026)
 
 - **Environment-Specific ESB App Configs** - Moved from shared `files/ESB_App_Configs/` to per-environment `files/{env}/ESB_App_Configs/` for dev/qa/prod isolation
 - **ESB_App_Configs Permission Fix** - Added `emptyDir` volume for `/opt/softwareag/ESB_App_Configs` to resolve write permission issue (`/opt/softwareag/` is root-owned, container runs as sagadmin)
@@ -539,5 +597,5 @@ This Helm chart is provided for use with licensed webMethods products from Softw
 ---
 
 *Maintained by: webMethods Architecture Team*
-*Chart Version: 2.9.0*
+*Chart Version: 2.10.0*
 *Last Updated: March 2026*

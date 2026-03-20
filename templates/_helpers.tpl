@@ -3,7 +3,11 @@
 {{- end }}
 
 {{- define "webmethods-msr.fullname" -}}
-wm-msr
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- end }}
 {{- end }}
 
 {{- define "webmethods-msr.chart" -}}
@@ -18,7 +22,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{- define "webmethods-msr.selectorLabels" -}}
-app: wm-msr
+app: {{ include "webmethods-msr.fullname" . }}
 app.kubernetes.io/name: {{ include "webmethods-msr.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Values.clusterLabel }}

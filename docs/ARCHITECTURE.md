@@ -4,7 +4,7 @@
 
 | Attribute | Value |
 |-----------|-------|
-| Version | 2.9.0 |
+| Version | 2.10.0 |
 | Last Updated | March 2026 |
 | Author | webMethods Platform Team |
 | Classification | Internal |
@@ -695,9 +695,9 @@ Benefits:
           │
           ▼
 ┌───────────────────┐
-│   wm-msr          │ ◄─── ClusterIP Service
+│   <release-name>  │ ◄─── ClusterIP Service (name derived from Helm release)
 │   (ClusterIP)     │      Ports: 5555, 5543, 9999
-│                   │      Selector: app=wm-msr
+│                   │      Selector: app=<release-name>
 └─────────┬─────────┘
           │
     ┌─────┴─────┐
@@ -710,7 +710,7 @@ Internal Services:
 ┌─────────────────────────────────────────────────────────────────┐
 │  Service               │  Port  │  DNS Name                     │
 ├─────────────────────────────────────────────────────────────────┤
-│  wm-msr                │  5555  │  wm-msr.wm-dev.svc            │
+│  <release-name>        │  5555  │  <release-name>.wm-dev.svc     │
 │  um-biz                │  9000  │  um-biz.wm-dev.svc            │
 │  terracotta-service    │  9510  │  terracotta-service.web...    │
 └─────────────────────────────────────────────────────────────────┘
@@ -727,7 +727,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: wm-msr
+      app: <release-name>    # Matches Helm release name
   policyTypes:
     - Egress
   egress:
@@ -1014,6 +1014,7 @@ helm upgrade --install wm-msr ./msr-helm \
 | JMS/JNDI ConfigMap mount | UM JMS connectivity via `jms.cnf` and `jndi_JNDI.properties`, toggleable per env | Feb 2026 |
 | QA adapter configurations | Full Dev/QA/Prod adapter parity for JDBC and SAP | Feb 2026 |
 | License management via ConfigMap | IS + TC client licenses mounted per environment, disabled by default for safety | Feb 2026 |
+| Dynamic release naming (`.Release.Name`) | Multi-app deployment in same namespace without chart duplication | Mar 2026 |
 
 ---
 

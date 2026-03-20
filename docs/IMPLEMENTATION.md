@@ -431,6 +431,8 @@ helm upgrade --install wm-msr . \
 
 **Note:** Adapter configurations are in the `adapters/` folder. Include only the adapters you need.
 
+> **Dynamic Naming (v2.10.0+):** All Kubernetes resource names and labels are derived from the Helm release name (e.g., `wm-msr` above). To deploy multiple MSR applications in the same namespace, use different release names (e.g., `msr-app-a`, `msr-app-b`). See [Multi-Application Deployment](#multi-application-deployment) below.
+
 ### Verify Deployment
 
 ```bash
@@ -1247,6 +1249,64 @@ helm rollback wm-msr -n wm-dev
 
 # Rollback to specific revision
 helm rollback wm-msr 2 -n wm-dev
+```
+
+---
+
+## Multi-Application Deployment
+
+As of v2.10.0, the chart supports deploying multiple MSR applications in the **same namespace** using a single chart copy. Resource names and labels are derived from the Helm release name.
+
+### Deploy Multiple Apps
+
+```bash
+# Application A (e.g., order processing)
+helm upgrade --install msr-orders . -n webmethods \
+  -f values.yaml \
+  -f values-orders.yaml \
+  -f adapters/values-jdbc-adapter-dev.yaml
+
+# Application B (e.g., customer APIs)
+helm upgrade --install msr-customers . -n webmethods \
+  -f values.yaml \
+  -f values-customers.yaml \
+  -f adapters/values-jdbc-adapter-dev.yaml
+```
+
+This creates independent resources:
+- StatefulSets: `msr-orders`, `msr-customers`
+- Services: `msr-orders:5555`, `msr-customers:5555`
+- ConfigMaps: `msr-orders-config`, `msr-customers-config`
+
+### Per-App Values File
+
+Each application needs its own values file with app-specific config:
+
+```yaml
+# values-orders.yaml
+replicaCount: 2
+image:
+  tag: "orders-v1.0"
+
+# Affinity must reference the release name
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app: msr-orders    # Must match release name
+          topologyKey: kubernetes.io/hostname
+```
+
+### Override Resource Name
+
+To use a custom name independent of the release name:
+
+```bash
+helm upgrade --install my-release . -n webmethods \
+  --set fullnameOverride=custom-msr-name
 ```
 
 ---
