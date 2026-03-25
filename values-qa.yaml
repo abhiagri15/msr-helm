@@ -6,6 +6,10 @@ environment: qa
 # MWS Single Sign-On - SAML Resolver URL (QA MWS instance)
 mwsSamlResolverUrl: "http://mws-qa.example.com:8585/services/SAML"
 
+# Cluster label for multi-cluster monitoring within same namespace
+# Used by Prometheus ServiceMonitors and Grafana dashboards to differentiate clusters
+clusterLabel: "qa"
+
 replicaCount: 3
 
 ## Image Configuration
@@ -61,6 +65,61 @@ securityContext:
       drop:
         - ALL
 
+# ============================================================================
+# Logging Configuration - QA Environment
+# ============================================================================
+# For QA, use "Info" level by default. Switch to "Trace" for debugging.
+# IMPORTANT: Trace level generates significant log volume and impacts performance
+#
+# To enable TRACE logging for debugging:
+#   helm upgrade wm-msr ./msr-helm -f values-qa.yaml \
+#     --set logging.level=Trace \
+#     --set logging.sap.level=6 \
+#     --set logging.sap.jcoTraceLevel=8
+# ============================================================================
+logging:
+  # General IS debug level (Off, Fatal, Error, Warn, Info, Debug, Trace)
+  level: "Info"
+
+  # Enable verbose server logging (helpful for debugging)
+  verbose: false
+
+  # Enable service audit logging
+  auditLog: false
+
+  # Enable detailed thread logging
+  threadDump: false
+
+  # JDBC logging
+  jdbc:
+    enabled: false
+    level: "Info"
+
+  # SAP Adapter logging configuration
+  # Levels: 0=Off, 1=Fatal, 2=Error, 3=Warn, 4=Info, 5=Debug, 6=Trace
+  sap:
+    # SAP adapter internal log level (0-6, where 6=Trace)
+    level: 4  # Default to Info (4)
+    # JCo trace level (0-10, where 0=off, 10=most verbose)
+    # Set to 8 for detailed SAP communication tracing
+    jcoTraceLevel: 0  # Default to off
+    # JCo trace output path
+    jcoTracePath: "/opt/softwareag/IntegrationServer/instances/default/logs"
+    # Facility-specific logging for SAP (format: facility:level)
+    # Example: "SAP*:6,SCC*:6" for TRACE on all SAP facilities
+    facilities: ""
+
+  # Spring Boot / SLF4J logging (for MSR components using Spring)
+  spring:
+    enabled: false  # Set to true to enable Spring Boot logging config
+    rootLevel: "INFO"
+    # Component-specific levels (only applied when spring.enabled=true)
+    components:
+      wm: "INFO"
+      softwareag: "INFO"
+      sapAdapter: "INFO"
+      jco: "INFO"
+
 # Persistence
 persistence:
   enabled: true
@@ -72,20 +131,51 @@ persistence:
 # JDBC POOL Configuration (MSR Internal Database for ISInternal, Xref, etc.)
 # ============================================================================
 # JDBC Pools are used by MSR internal functions like ISInternal, ISDashboardStats, Xref
-# Credentials stored in Azure Key Vault: qa-jdbc-pool-url, qa-jdbc-pool-username, qa-jdbc-pool-password
+# Multiple pools can be configured. Each pool requires:
+#   - name: Pool name (used in application.properties)
+#   - dbURL: JDBC connection URL (in values file - not sensitive)
+#   - username: Database username (in values file - not sensitive)
+#   - secretName: Azure Key Vault secret name for password (password only from KV)
+#   - passwordEnvVar: Environment variable name for password injection
+#
 # Pool sizing configuration is environment-specific and non-sensitive
+# ============================================================================
 jdbcPool:
   enabled: true
-  pool:
-    name: "IS-Pool"
-    driverAlias: "DataDirect Connect JDBC SQL Server Driver"
-    dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
-    minConns: 2
-    maxConns: 150
-    poolThreshold: 10
-    waitingThread: 75
-    expireTime: 60000
-    useSSL: false
+  pools:
+    # Primary pool for ISInternal, Xref, Dashboard
+    - name: "IS-Pool"
+      description: "MSR Internal JDBC Pool"
+      dbURL: "jdbc:wm:sqlserver://wm-sql-abi-qa.database.windows.net:1433;databaseName=isinternal"
+      username: "wmadmin"
+      secretName: "jdbcpool-ispool-password"     # Key Vault: qa-jdbcpool-ispool-password
+      passwordEnvVar: "JDBC_IS_POOL_PASSWORD"
+      driverAlias: "DataDirect Connect JDBC SQL Server Driver"
+      dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
+      minConns: 2
+      maxConns: 150
+      poolThreshold: 10
+      waitingThread: 75
+      expireTime: 60000
+      useSSL: false
+
+    # Example: Additional pool for custom application database
+    # - name: "App-Pool"
+    #   description: "Custom Application JDBC Pool"
+    #   dbURL: "jdbc:wm:sqlserver://app-sql-qa.database.windows.net:1433;databaseName=APP_QA"
+    #   username: "app_user"
+    #   secretName: "jdbcpool-apppool-password"  # Key Vault: qa-jdbcpool-apppool-password
+    #   passwordEnvVar: "JDBC_APP_POOL_PASSWORD"
+    #   driverAlias: "DataDirect Connect JDBC SQL Server Driver"
+    #   dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
+    #   minConns: 2
+    #   maxConns: 75
+    #   poolThreshold: 5
+    #   waitingThread: 25
+    #   expireTime: 60000
+    #   useSSL: true
+
+  # JDBC Functional Aliases map logical names to physical pool names
   functionalAliases:
     - name: "ISInternal"
       connPoolAlias: "IS-Pool"
@@ -98,40 +188,30 @@ jdbcPool:
       failFastMode: true
 
 # ============================================================================
-# JDBC ADAPTER Configuration (WmJDBCAdapter for Integration Services)
+# JDBC ADAPTER Configuration
 # ============================================================================
-# JDBC Adapter connections are used by business integration services
-# Azure SQL Database: wm-sql-abi-dev.database.windows.net
-# Credentials stored in Azure Key Vault: qa-jdbc-adapter-url, qa-jdbc-adapter-username, qa-jdbc-adapter-password
-# Each connection can have different pool sizing and transaction settings
-jdbcAdapter:
-  enabled: true
-  connections:
-    - name: "mssql_db_connection"
-      description: "Azure SQL Database Connection for Integration Services (QA)"
-      packageName: "AbTest"
-      folderName: "AbTest"
-      connectionType: "JDBC Adapter Connection"
-      connectionFactoryInterface: "com.wm.adapter.wmjdbc.JDBCConnectionFactory"
-      driverAlias: "Microsoft SQL Server Driver"
-      dataSourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
-      # Azure SQL Database connection details - credentials from Azure Key Vault
-      serverName: "wm-sql-abi-dev.database.windows.net"
-      databaseName: "isinternal"
-      portNumber: 1433
-      networkProtocol: "tcp"
-      user: "$env{JDBC_ADAPTER_USERNAME}"
-      password: "$env{JDBC_ADAPTER_PASSWORD}"
-      otherProperties: "encrypt=true;trustServerCertificate=true;loginTimeout=30"
-      transactionType: "LOCAL_TRANSACTION"
-      # Connection pool settings
-      minPoolSize: 2
-      maxPoolSize: 20
-      poolIncrementSize: 2
-      blockTimeout: 2000
-      expireTimeout: 2000
-      startupRetryCount: 3
-      startupBackoffSecs: 10
+# JDBC Adapter connections are configured in a separate file for maintainability.
+# See: adapters/values-jdbc-adapter-qa.yaml
+#
+# Usage:
+#   helm upgrade --install wm-msr ./msr-helm \
+#     -f values-qa.yaml \
+#     -f adapters/values-jdbc-adapter-qa.yaml \
+#     -n webmethods
+# ============================================================================
+
+# ============================================================================
+# SAP ADAPTER Configuration
+# ============================================================================
+# SAP Adapter connections and listeners are configured in a separate file.
+# See: adapters/values-sap-adapter-qa.yaml
+#
+# Usage:
+#   helm upgrade --install wm-msr ./msr-helm \
+#     -f values-qa.yaml \
+#     -f adapters/values-sap-adapter-qa.yaml \
+#     -n webmethods
+# ============================================================================
 
 # High availability with pod anti-affinity
 affinity:
@@ -191,16 +271,43 @@ healthProbes:
 license:
   enabled: false
 
-# Extended Settings (watt.* Properties for server.cnf)
+# ============================================================================
+# Extended Settings (watt.* Properties via Config Template)
+# ============================================================================
+# Additional watt.* properties added to application.properties at startup.
+# Uses settings.watt.* prefix per IBM Configuration Variables Template format.
+# Supports both inline properties map AND file-based extended-settings.cnf
+#
+# In the properties map below, use bare watt.* keys — chart auto-adds "settings." prefix.
+# In the .cnf file, use full settings.watt.* prefix.
+# ============================================================================
 extendedSettings:
-  enabled: false
-  properties: {}
+  enabled: true
 
+  properties:
+    # URL Aliases (environment-specific)
+    # watt.server.url.alias.myapi: "/rest/myapi"
+    # watt.server.url.alias.health: "/health"
+    # Thread pool and connection tuning (QA values)
+    # watt.net.maxClientKeepaliveConns: "75"
+    # watt.server.threadPool: "300"
+
+# ============================================================================
 # Custom Wrapper Configuration (custom_wrapper.conf)
+# ============================================================================
+# JVM wrapper configuration loaded from files/qa/configuration/custom_wrapper.conf
+# Controls JVM options, library paths, wrapper timeouts, etc.
+# Read at JVM startup BEFORE Integration Server starts
+# ============================================================================
 customWrapper:
   enabled: true
 
+# ============================================================================
 # Web Services Endpoint Configuration
+# ============================================================================
+# Endpoint .cnf files auto-discovered from files/qa/config/endpoints/*.cnf
+# Mounted to /opt/softwareag/.../config/endpoints/ via PostStart copy
+# ============================================================================
 endpointConfigs:
   enabled: true
 
@@ -234,6 +341,18 @@ um:
       secretName: "um-logs-password"
       passwordEnvVar: "UM_LOGS_PASSWORD"
 
+# =====================
+# CACHING CONFIGURATION
+# =====================
+# Public Cache Managers loaded from files/config/caching/*.xml
+# Each XML defines an Ehcache cache manager with named caches
+# Included: OrderCache (ActiveOrders, OrderHistory),
+#           SessionCache (UserSessions, AuthTokens),
+#           LookupCache (CountryCodes, CurrencyRates, ProductCatalog)
+caching:
+  publicCacheManagers:
+    enabled: true
+
 # Terracotta Cache Manager Configuration
 terracotta:
   enabled: true
@@ -243,11 +362,30 @@ terracotta:
     - "terracotta-1.terracotta-service:9510"
   # Only 2 Terracotta servers are deployed, matching StatefulSet replicas
 
-# Keystore Configuration (example - no actual files mounted)
+# Keystore Configuration (example - no actual files mounted in QA)
+# To use actual keystore files, add 'fileData' field with base64 encoded content
 keystores: []
+  # - aliasName: "DEFAULT_IS_KEYSTORE"
+  #   description: "Default Integration Server Keystore for SSL/TLS"
+  #   type: "PKCS12"
+  #   provider: "SUN"
+  #   location: "/opt/softwareag/IntegrationServer/config/security/keystore.p12"
+  #   password: "manage"
+  #   isHsm: false
+  #   keys:
+  #     - keyAliasName: "sslkey"
+  #       keyAliasPassword: "manage"
+  #   # fileData: ""  # Base64 encoded keystore file
 
-# Truststore Configuration (example - no actual files mounted)
+# Truststore Configuration (example - no actual files mounted in QA)
 truststores: []
+  # - aliasName: "DEFAULT_IS_TRUSTSTORE"
+  #   description: "Default Integration Server Truststore for SSL/TLS"
+  #   type: "JKS"
+  #   provider: "SUN"
+  #   location: "/opt/softwareag/IntegrationServer/config/security/truststore.jks"
+  #   password: "manage"
+  #   # fileData: ""  # Base64 encoded truststore file
 
 # Autoscaling Configuration
 autoscaling:
@@ -255,19 +393,37 @@ autoscaling:
   minReplicas: 3
   maxReplicas: 8
   targetCPUUtilizationPercentage: 70
+  # Memory metric disabled for JVM apps - JVM heap is constant regardless of load,
+  # causing HPA to never scale down. Scale on CPU only.
   targetMemoryUtilizationPercentage: false
 
 # ============================================================================
 # Azure Key Vault Integration
 # ============================================================================
 # Store certificates in Azure Key Vault for centralized management
-# All secrets use the "test" prefix for QA environment
+# Two types of certificates can be stored:
+#
+# 1. KEYSTORE Certificate (Certificate + Private Key)
+#    - Used for YOUR server's identity (SSL/TLS server certificate)
+#    - Must be imported as PKCS12/PFX with private key
+#    - CSI driver mounts both .crt and .key files
+#    - Init container converts PEM to PKCS12 keystore
+#
+# 2. TRUSTSTORE Certificate (Certificate only, NO Private Key)
+#    - Used for TRUSTED external parties (CA certs, partner certs)
+#    - Imported as .crt, .cer, or .pem (no private key)
+#    - CSI driver mounts only .crt file
+#    - Init container combines multiple certs into PKCS12 truststore
+#
+# IMPORTANT: Azure Key Vault Access Requirements
+# -----------------------------------------------
+# The AKS kubelet managed identity must have access to the Key Vault.
 # ============================================================================
 azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "63dc93ea-e9e1-4249-a458-c3fca4d6c68c"  # CSI Secrets Store addon identity (webmethods-cluster)
+  clientId: "63dc93ea-e9e1-4249-a458-c3fca4d6c68c"  # CSI Secrets Store addon identity (more reliable on autoscaled nodes)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault
@@ -302,7 +458,19 @@ azureKeyVault:
 # Truststore contains trusted certificates (CA certs, partner certs)
 # Each certificate should be uploaded to Azure Key Vault as Certificate object
 # WITHOUT private key (just the .crt file)
-# Certificate names in Key Vault are prefixed with secretKeyPrefix: qa-truststore-root-ca, etc.
+#
+# How it works:
+# 1. Upload trusted CA certificates to Azure Key Vault (Certificate section)
+# 2. List them below in the certificates array
+# 3. Init container fetches all certificates from Key Vault
+# 4. Init container combines them into single PKCS12 truststore with --legacy flag
+# 5. MSR loads the truststore
+#
+# Example: Upload a trusted CA certificate
+#   az keyvault certificate import \
+#     --vault-name wM-kv \
+#     --name truststore-root-ca \
+#     --file root-ca.crt
 # ============================================================================
 truststoreCertificates:
   enabled: true
@@ -317,6 +485,7 @@ truststoreCertificates:
   # List of trusted certificates to include in truststore
   # Each certificate must exist in Azure Key Vault (Secrets section as PEM files)
   # These certificates are public certificates only (no private keys)
+  # Certificate names in Key Vault are prefixed with secretKeyPrefix: qa-truststore-root-ca, etc.
   certificates:
     - certName: "truststore-root-ca"          # Root CA certificate (Key Vault: qa-truststore-root-ca)
       alias: "root-ca"                        # Alias in PKCS12 truststore
@@ -332,8 +501,10 @@ truststoreCertificates:
 # ============================================================================
 # PACKAGE CONFIGURATIONS (File-based)
 # ============================================================================
-# Package config files auto-discovered from files/qa/packages/*/config/*
-# Current packages: SmClick3
+# Package config files are auto-discovered from files/qa/packages/*/config/*
+# Current packages: AbTest, AbTest2
+# To add a new package config, create: files/qa/packages/{PkgName}/config/app.properties
+# Sensitive values use ${ENV_VAR} syntax, with secrets in Azure Key Vault
 # ============================================================================
 packageConfigs:
   enabled: true
@@ -342,12 +513,71 @@ packageConfigs:
 # ESB APP CONFIGS (Environment-Specific)
 # ============================================================================
 # ESB App config files auto-discovered recursively from files/qa/ESB_App_Configs/
+# Current packages: SmOMS, SmPublic, SmSES_v33 (with deep subdirectory structure)
+# Copied to /opt/softwareag/ESB_App_Configs/ preserving full directory tree
 # ============================================================================
 esbAppConfigs:
   enabled: true
 
 # ============================================================================
-# GLOBAL VARIABLES
+# GLOBAL VARIABLES (globalVariables.cnf)
+# ============================================================================
+# Loaded from files/qa/config/globalVariables.cnf
+# Mounted to /opt/softwareag/IntegrationServer/config/globalVariables.cnf
 # ============================================================================
 globalVariables:
   enabled: true
+
+# ============================================================================
+# FILE ACCESS CONTROL Configuration (WmPublic package - pub.file services)
+# ============================================================================
+# Controls which directories/files the pub.file services can read, write, delete
+# This creates fileAccessControl.cnf in WmPublic/config directory
+#
+# Path Format:
+# - Use semicolons (;) to separate multiple paths (no spaces)
+# - Single asterisk (*) matches directory names
+# - Double asterisk (**) matches multiple nested folders and files
+# - Paths are case-sensitive on Linux
+#
+# Reference: https://www.ibm.com/docs/en/webmethods-integration/wm-integration-server/10.15.0?topic=guide-file-folder
+# ============================================================================
+fileAccessControl:
+  enabled: true
+
+  # Directories/files with READ permission for pub.file services
+  # QA environment: Allow reading from temp, logs, config, and data directories
+  allowedReadPaths: "/tmp;/opt/softwareag/IntegrationServer/instances/default/logs/**;/opt/softwareag/IntegrationServer/instances/default/config/**;/opt/softwareag/IntegrationServer/instances/default/data/**;/dev/smud456/**;/dev/smud123/**"
+
+  # Directories/files with WRITE permission for pub.file services
+  # QA environment: Allow writing to temp, logs, and data directories
+  allowedWritePaths: "/tmp;/opt/softwareag/IntegrationServer/instances/default/logs/**;/opt/softwareag/IntegrationServer/instances/default/data/**;/dev/smud456/**;/dev/smud123/**"
+
+  # Directories/files with DELETE permission for pub.file services
+  # QA environment: Allow deleting from temp directory only (restrictive)
+  allowedDeletePaths: "/tmp"
+
+# ============================================================================
+# webMethods Cloud (Integration Cloud) Configuration
+# ============================================================================
+# Enables connectivity to webMethods.io Integration / Integration Cloud
+#
+# Configuration files are loaded from:
+#   - files/integrationlive/accounts.cnf
+#   - files/integrationlive/connections.cnf
+#   - files/integrationlive/applications/*.cnf
+#
+# Password stored in Azure Key Vault: qa-wmcloud-qa-io-password
+# ============================================================================
+webMethodsCloud:
+  enabled: false
+
+  # Cloud Passwords (Azure Key Vault)
+  # Only enable passwords for accounts that are enabled in accounts.cnf
+  cloudPasswords:
+    - alias: "QA io"
+      secretName: "wmcloud-qa-io-password"
+      envVar: "WMCLOUD_QA_IO_PASSWORD"
+
+  # Optional: Override application files from values (normally loaded from files/)
+  applicationFiles: {}

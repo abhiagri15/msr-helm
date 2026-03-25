@@ -6,6 +6,10 @@ environment: prod
 # MWS Single Sign-On - SAML Resolver URL (Prod MWS instance)
 mwsSamlResolverUrl: "http://mws-prod.example.com:8585/services/SAML"
 
+# Cluster label for multi-cluster monitoring within same namespace
+# Used by Prometheus ServiceMonitors and Grafana dashboards to differentiate clusters
+clusterLabel: "prod"
+
 replicaCount: 3
 
 ## Image Configuration
@@ -14,7 +18,7 @@ replicaCount: 3
 ## The tag below is a fallback for manual deploys only.
 image:
   repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
-  tag: "11.1.0.6-postgresql-v2"
+  tag: "11.1.0.6-build-272"
   pullPolicy: IfNotPresent
 
 service:
@@ -67,6 +71,58 @@ securityContext:
       drop:
         - ALL
 
+# ============================================================================
+# Logging Configuration - Production Environment
+# ============================================================================
+# For production, use "Warn" level by default for minimal log volume.
+# IMPORTANT: Trace level generates significant log volume and impacts performance
+#
+# To enable DEBUG logging for troubleshooting:
+#   helm upgrade wm-msr ./msr-helm -f values-prod.yaml \
+#     --set logging.level=Info \
+#     --set logging.sap.level=4
+# ============================================================================
+logging:
+  # General IS debug level (Off, Fatal, Error, Warn, Info, Debug, Trace)
+  level: "Warn"
+
+  # Enable verbose server logging (helpful for debugging)
+  verbose: false
+
+  # Enable service audit logging
+  auditLog: false
+
+  # Enable detailed thread logging
+  threadDump: false
+
+  # JDBC logging
+  jdbc:
+    enabled: false
+    level: "Warn"
+
+  # SAP Adapter logging configuration
+  # Levels: 0=Off, 1=Fatal, 2=Error, 3=Warn, 4=Info, 5=Debug, 6=Trace
+  sap:
+    # SAP adapter internal log level (0-6, where 6=Trace)
+    level: 3  # Default to Warn (3) for production
+    # JCo trace level (0-10, where 0=off, 10=most verbose)
+    jcoTraceLevel: 0  # Default to off
+    # JCo trace output path
+    jcoTracePath: "/opt/softwareag/IntegrationServer/instances/default/logs"
+    # Facility-specific logging for SAP (format: facility:level)
+    facilities: ""
+
+  # Spring Boot / SLF4J logging (for MSR components using Spring)
+  spring:
+    enabled: false  # Set to true to enable Spring Boot logging config
+    rootLevel: "WARN"
+    # Component-specific levels (only applied when spring.enabled=true)
+    components:
+      wm: "WARN"
+      softwareag: "WARN"
+      sapAdapter: "WARN"
+      jco: "WARN"
+
 # Persistence
 persistence:
   enabled: true
@@ -74,21 +130,55 @@ persistence:
   accessMode: ReadWriteOnce
   size: 10Gi
 
-# JDBC Configuration
-jdbc:
+# ============================================================================
+# JDBC POOL Configuration (MSR Internal Database for ISInternal, Xref, etc.)
+# ============================================================================
+# JDBC Pools are used by MSR internal functions like ISInternal, ISDashboardStats, Xref
+# Multiple pools can be configured. Each pool requires:
+#   - name: Pool name (used in application.properties)
+#   - dbURL: JDBC connection URL (in values file - not sensitive)
+#   - username: Database username (in values file - not sensitive)
+#   - secretName: Azure Key Vault secret name for password (password only from KV)
+#   - passwordEnvVar: Environment variable name for password injection
+#
+# Pool sizing configuration is environment-specific and non-sensitive
+# ============================================================================
+jdbcPool:
   enabled: true
-  pool:
-    name: "IS-Pool"
-    dbURL: "jdbc:postgresql://postgresql:5432/webmethods"
-    driverAlias: "PostgresqlDriver"
-    username: "postgres"
-    password: "admin123"
-    minConns: 5
-    maxConns: 300  # Increased for prod
-    poolThreshold: 10
-    waitingThread: 100
-    expireTime: 60000
-    useSSL: false
+  pools:
+    # Primary pool for ISInternal, Xref, Dashboard
+    - name: "IS-Pool"
+      description: "MSR Internal JDBC Pool"
+      dbURL: "jdbc:wm:sqlserver://wm-sql-abi-prod.database.windows.net:1433;databaseName=isinternal"
+      username: "wmadmin"
+      secretName: "jdbcpool-ispool-password"     # Key Vault: prod-jdbcpool-ispool-password
+      passwordEnvVar: "JDBC_IS_POOL_PASSWORD"
+      driverAlias: "DataDirect Connect JDBC SQL Server Driver"
+      dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
+      minConns: 5
+      maxConns: 300
+      poolThreshold: 10
+      waitingThread: 100
+      expireTime: 60000
+      useSSL: false
+
+    # Example: Additional pool for custom application database
+    # - name: "App-Pool"
+    #   description: "Custom Application JDBC Pool"
+    #   dbURL: "jdbc:wm:sqlserver://app-sql-prod.database.windows.net:1433;databaseName=APP_PROD"
+    #   username: "app_user"
+    #   secretName: "jdbcpool-apppool-password"  # Key Vault: prod-jdbcpool-apppool-password
+    #   passwordEnvVar: "JDBC_APP_POOL_PASSWORD"
+    #   driverAlias: "DataDirect Connect JDBC SQL Server Driver"
+    #   dataSourceClass: "com.wm.dd.jdbc.sqlserver.SQLServerDataSource"
+    #   minConns: 5
+    #   maxConns: 100
+    #   poolThreshold: 10
+    #   waitingThread: 50
+    #   expireTime: 60000
+    #   useSSL: true
+
+  # JDBC Functional Aliases map logical names to physical pool names
   functionalAliases:
     - name: "ISInternal"
       connPoolAlias: "IS-Pool"
@@ -99,6 +189,32 @@ jdbc:
     - name: "Xref"
       connPoolAlias: "IS-Pool"
       failFastMode: true
+
+# ============================================================================
+# JDBC ADAPTER Configuration
+# ============================================================================
+# JDBC Adapter connections are configured in a separate file for maintainability.
+# See: adapters/values-jdbc-adapter-prod.yaml
+#
+# Usage:
+#   helm upgrade --install wm-msr ./msr-helm \
+#     -f values-prod.yaml \
+#     -f adapters/values-jdbc-adapter-prod.yaml \
+#     -n webmethods
+# ============================================================================
+
+# ============================================================================
+# SAP ADAPTER Configuration
+# ============================================================================
+# SAP Adapter connections and listeners are configured in a separate file.
+# See: adapters/values-sap-adapter-prod.yaml
+#
+# Usage:
+#   helm upgrade --install wm-msr ./msr-helm \
+#     -f values-prod.yaml \
+#     -f adapters/values-sap-adapter-prod.yaml \
+#     -n webmethods
+# ============================================================================
 
 # High availability with pod anti-affinity (required for production)
 affinity:
@@ -156,18 +272,45 @@ healthProbes:
 license:
   enabled: false
 
+# ============================================================================
 # Extended Settings (watt.* Properties via Config Template)
+# ============================================================================
+# Additional watt.* properties added to application.properties at startup.
+# Uses settings.watt.* prefix per IBM Configuration Variables Template format.
+# Supports both inline properties map AND file-based extended-settings.cnf
+#
+# In the properties map below, use bare watt.* keys — chart auto-adds "settings." prefix.
+# In the .cnf file, use full settings.watt.* prefix.
+# ============================================================================
 extendedSettings:
-  enabled: false
-  properties: {}
+  enabled: true
 
+  properties:
+    # URL Aliases (environment-specific)
+    # watt.server.url.alias.myapi: "/rest/myapi"
+    # watt.server.url.alias.health: "/health"
+    # Thread pool and connection tuning (prod values)
+    # watt.net.maxClientKeepaliveConns: "100"
+    # watt.server.threadPool: "500"
+
+# ============================================================================
 # Custom Wrapper Configuration (custom_wrapper.conf)
+# ============================================================================
+# JVM wrapper configuration loaded from files/prod/configuration/custom_wrapper.conf
+# Controls JVM options, library paths, wrapper timeouts, etc.
+# Read at JVM startup BEFORE Integration Server starts
+# ============================================================================
 customWrapper:
-  enabled: false
+  enabled: true
 
+# ============================================================================
 # Web Services Endpoint Configuration
+# ============================================================================
+# Endpoint .cnf files auto-discovered from files/prod/config/endpoints/*.cnf
+# Mounted to /opt/softwareag/.../config/endpoints/ via PostStart copy
+# ============================================================================
 endpointConfigs:
-  enabled: false
+  enabled: true
 
 # JMS/JNDI Configuration (UM JMS Provider)
 jmsConfig:
@@ -199,6 +342,18 @@ um:
       secretName: "um-logs-password"
       passwordEnvVar: "UM_LOGS_PASSWORD"
 
+# =====================
+# CACHING CONFIGURATION
+# =====================
+# Public Cache Managers loaded from files/config/caching/*.xml
+# Each XML defines an Ehcache cache manager with named caches
+# Included: OrderCache (ActiveOrders, OrderHistory),
+#           SessionCache (UserSessions, AuthTokens),
+#           LookupCache (CountryCodes, CurrencyRates, ProductCatalog)
+caching:
+  publicCacheManagers:
+    enabled: true
+
 # Terracotta Cache Manager Configuration
 terracotta:
   enabled: true
@@ -206,8 +361,9 @@ terracotta:
   urls:
     - "terracotta-0.terracotta-service:9510"
     - "terracotta-1.terracotta-service:9510"
+  # Only 2 Terracotta servers are deployed, matching StatefulSet replicas
 
-# Keystore Configuration (example - for production use Azure Key Vault or secure secrets)
+# Keystore Configuration (example - for production use Azure Key Vault)
 # To use actual keystore files, add 'fileData' field with base64 encoded content
 keystores: []
   # - aliasName: "DEFAULT_IS_KEYSTORE"
@@ -222,7 +378,7 @@ keystores: []
   #       keyAliasPassword: "manage"
   #   # fileData: ""  # Base64 encoded keystore file
 
-# Truststore Configuration (example - for production use Azure Key Vault or secure secrets)
+# Truststore Configuration (example - for production use Azure Key Vault)
 truststores: []
   # - aliasName: "DEFAULT_IS_TRUSTSTORE"
   #   description: "Default Integration Server Truststore for SSL/TLS"
@@ -238,80 +394,123 @@ autoscaling:
   minReplicas: 3
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
+  # Memory metric disabled for JVM apps - JVM heap is constant regardless of load,
+  # causing HPA to never scale down. Scale on CPU only.
   targetMemoryUtilizationPercentage: false
 
 # ============================================================================
-# Azure Key Vault Integration (Production)
+# Azure Key Vault Integration
 # ============================================================================
-# Automatically retrieves certificates from Azure Key Vault and converts them
-# to Java keystores/truststores during pod initialization.
+# Store certificates in Azure Key Vault for centralized management
+# Two types of certificates can be stored:
 #
-# How it works:
-# 1. CSI Secrets Store Provider mounts truststore certificates to /mnt/secrets-store/
-# 2. Init container uses Azure CLI to download keystore certificates with private keys
-# 3. OpenSSL converts Azure's proprietary PFX format to PEM format
-# 4. OpenSSL creates Java-compatible PKCS12 keystores
-# 5. Java keytool creates truststores from public certificates
-# 6. MSR loads keystores/truststores on startup
+# 1. KEYSTORE Certificate (Certificate + Private Key)
+#    - Used for YOUR server's identity (SSL/TLS server certificate)
+#    - Must be imported as PKCS12/PFX with private key
+#    - CSI driver mounts both .crt and .key files
+#    - Init container converts PEM to PKCS12 keystore
 #
-# Prerequisites:
-# - Azure Key Vault created with certificates uploaded (e.g., wM-kv-prod)
-# - AKS cluster with Azure Key Vault CSI driver enabled:
-#   az aks enable-addons --addons azure-keyvault-secrets-provider \
-#     --name <cluster-name> --resource-group <rg-name>
-# - Kubelet managed identity with Key Vault access:
-#   az keyvault set-policy --name wM-kv-prod \
-#     --object-id <kubelet-identity-object-id> \
-#     --secret-permissions get list \
-#     --certificate-permissions get list
+# 2. TRUSTSTORE Certificate (Certificate only, NO Private Key)
+#    - Used for TRUSTED external parties (CA certs, partner certs)
+#    - Imported as .crt, .cer, or .pem (no private key)
+#    - CSI driver mounts only .crt file
+#    - Init container combines multiple certs into PKCS12 truststore
 #
+# IMPORTANT: Azure Key Vault Access Requirements
+# -----------------------------------------------
+# The AKS kubelet managed identity must have access to the Key Vault.
 # Production Best Practices:
 # - Use separate Key Vault for production (wM-kv-prod)
-# - Store passwords in Azure Key Vault secrets (not in values file)
-# - Use managed identities for authentication (no credentials in code)
 # - Enable soft-delete and purge protection on Key Vault
-# - Implement RBAC for least privilege access
-# - Set up certificate expiration alerts
 # - Use Premium SKU Key Vault for production workloads
-#
-# For detailed setup instructions, see: AZURE_KEYVAULT_SETUP.md
+# - Set up certificate expiration alerts
 # ============================================================================
 azureKeyVault:
-  enabled: false  # Set to true to enable Azure Key Vault integration in production
-  vaultName: "wM-kv-prod"  # Use separate Key Vault for production environment
-  tenantId: ""  # Azure tenant ID (get from: az account show --query tenantId -o tsv)
-  clientId: ""  # Kubelet managed identity client ID (get from: az aks show --query identityProfile.kubeletidentity.clientId -o tsv)
+  enabled: true
+  vaultName: "wM-kv-prod"
+  tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
+  clientId: ""  # CSI Secrets Store addon identity - populate when prod cluster is provisioned
+  mountPath: "/mnt/secrets-store"
 
-  # Keystore Certificates (certificates with private keys)
-  # These are downloaded using Azure CLI and converted to Java PKCS12 keystores
-  # Upload to Key Vault using:
-  #   az keyvault certificate import --vault-name wM-kv-prod --name prod-ssl-cert --file certificate.pfx
-  certificates: []
-    # Example production keystore configuration:
-    # - certName: "prod-ssl-cert"              # Certificate name in Azure Key Vault
-    #   fileName: "prod_keystore.p12"          # Output keystore filename
-    #   keystoreConfig:
-    #     password: "changeit"                 # Store password in Azure Key Vault secrets for production
-    #     keys:
-    #       - keyAliasName: "prod-server-cert" # Alias for the private key in keystore
+  # Environment-specific prefix for secret names in Azure Key Vault
+  # Secrets will be retrieved as: {secretKeyPrefix}-{secretName}
+  # Example: prod-jdbc-pool-password, prod-keystore-password, prod-um-password
+  secretKeyPrefix: "prod"
 
-  # Truststore Certificates (public certificates only - NO private keys)
-  # These are mounted by CSI driver and imported into truststore by init container
-  # Upload to Key Vault using:
-  #   az keyvault certificate import --vault-name wM-kv-prod --name prod-root-ca --file root-ca.crt
-  truststoreCerts: []
-    # Example production truststore configuration:
-    # - certName: "prod-root-ca"               # Corporate root CA certificate
-    # - certName: "prod-intermediate-ca"       # Intermediate CA certificate
-    # - certName: "prod-partner-bank-cert"     # Partner bank public certificate
-    # - certName: "prod-payment-gateway-cert"  # Payment gateway public certificate
-    # - certName: "prod-api-partner-cert"      # API partner public certificate
+  # KEYSTORE Certificates (Certificate + Private Key)
+  # These certificates represent YOUR server's identity
+  # Upload to Azure Key Vault as Certificate with private key (PKCS12/PFX)
+  # Passwords stored in Azure Key Vault: prod-keystore-password, prod-keyalias-password
+  certificates:
+    - certName: "wm-cer"
+      fileName: "wm_keystore.p12"
+      keystoreConfig:
+        aliasName: "WM_KEYSTORE"
+        description: "webMethods Keystore from Azure Key Vault (Prod)"
+        type: "PKCS12"
+        provider: "SUN"
+        # Password injected via environment variable from Azure Key Vault
+        isHsm: false
+        keys:
+          - keyAliasName: "wm-cer"
+            # Key alias password injected via environment variable from Azure Key Vault
+
+  # Additional secrets can be stored here (not commonly used)
+  secrets: []
+
+# ============================================================================
+# TRUSTSTORE Configuration
+# ============================================================================
+# Truststore contains trusted certificates (CA certs, partner certs)
+# Each certificate should be uploaded to Azure Key Vault as Certificate object
+# WITHOUT private key (just the .crt file)
+#
+# How it works:
+# 1. Upload trusted CA certificates to Azure Key Vault (Certificate section)
+# 2. List them below in the certificates array
+# 3. Init container fetches all certificates from Key Vault
+# 4. Init container combines them into single PKCS12 truststore with --legacy flag
+# 5. MSR loads the truststore
+#
+# Example: Upload a trusted CA certificate
+#   az keyvault certificate import \
+#     --vault-name wM-kv-prod \
+#     --name truststore-root-ca \
+#     --file root-ca.crt
+# ============================================================================
+truststoreCertificates:
+  enabled: true
+  fileName: "wm_truststore.p12"
+  aliasName: "WM_TRUSTSTORE"
+  description: "webMethods Truststore from Azure Key Vault (Prod)"
+  type: "PKCS12"
+  provider: "SUN"
+  # Password stored in Azure Key Vault: prod-truststore-password
+  # Password injected via environment variable from Azure Key Vault
+
+  # List of trusted certificates to include in truststore
+  # Each certificate must exist in Azure Key Vault (Secrets section as PEM files)
+  # These certificates are public certificates only (no private keys)
+  # Certificate names in Key Vault are prefixed with secretKeyPrefix: prod-truststore-root-ca, etc.
+  certificates:
+    - certName: "truststore-root-ca"          # Root CA certificate (Key Vault: prod-truststore-root-ca)
+      alias: "root-ca"                        # Alias in PKCS12 truststore
+    - certName: "truststore-intermediate-ca"  # Intermediate CA certificate (Key Vault: prod-truststore-intermediate-ca)
+      alias: "intermediate-ca"
+    - certName: "truststore-partner-cert"     # Partner's public certificate (Key Vault: prod-truststore-partner-cert)
+      alias: "partner-cert"
+    - certName: "truststore-payment-gateway"  # Payment Gateway partner certificate (Key Vault: prod-truststore-payment-gateway)
+      alias: "payment-gateway"
+    - certName: "truststore-banking-partner"  # Banking partner certificate (Key Vault: prod-truststore-banking-partner)
+      alias: "banking-partner"
 
 # ============================================================================
 # PACKAGE CONFIGURATIONS (File-based)
 # ============================================================================
-# Package config files auto-discovered from files/prod/packages/*/config/*
-# Current packages: SmClick3
+# Package config files are auto-discovered from files/prod/packages/*/config/*
+# Current packages: AbTest, AbTest2
+# To add a new package config, create: files/prod/packages/{PkgName}/config/app.properties
+# Sensitive values use ${ENV_VAR} syntax, with secrets in Azure Key Vault
 # ============================================================================
 packageConfigs:
   enabled: true
@@ -320,12 +519,71 @@ packageConfigs:
 # ESB APP CONFIGS (Environment-Specific)
 # ============================================================================
 # ESB App config files auto-discovered recursively from files/prod/ESB_App_Configs/
+# Current packages: SmOMS, SmPublic, SmSES_v33 (with deep subdirectory structure)
+# Copied to /opt/softwareag/ESB_App_Configs/ preserving full directory tree
 # ============================================================================
 esbAppConfigs:
   enabled: true
 
 # ============================================================================
-# GLOBAL VARIABLES
+# GLOBAL VARIABLES (globalVariables.cnf)
+# ============================================================================
+# Loaded from files/prod/config/globalVariables.cnf
+# Mounted to /opt/softwareag/IntegrationServer/config/globalVariables.cnf
 # ============================================================================
 globalVariables:
   enabled: true
+
+# ============================================================================
+# FILE ACCESS CONTROL Configuration (WmPublic package - pub.file services)
+# ============================================================================
+# Controls which directories/files the pub.file services can read, write, delete
+# This creates fileAccessControl.cnf in WmPublic/config directory
+#
+# Path Format:
+# - Use semicolons (;) to separate multiple paths (no spaces)
+# - Single asterisk (*) matches directory names
+# - Double asterisk (**) matches multiple nested folders and files
+# - Paths are case-sensitive on Linux
+#
+# Reference: https://www.ibm.com/docs/en/webmethods-integration/wm-integration-server/10.15.0?topic=guide-file-folder
+# ============================================================================
+fileAccessControl:
+  enabled: true
+
+  # Directories/files with READ permission for pub.file services
+  # Prod environment: Restrictive - only necessary paths
+  allowedReadPaths: "/tmp;/opt/softwareag/IntegrationServer/instances/default/logs/**;/opt/softwareag/IntegrationServer/instances/default/config/**;/opt/softwareag/IntegrationServer/instances/default/data/**;/dev/smud456/**;/dev/smud123/**"
+
+  # Directories/files with WRITE permission for pub.file services
+  # Prod environment: Restrictive - only necessary paths
+  allowedWritePaths: "/tmp;/opt/softwareag/IntegrationServer/instances/default/logs/**;/opt/softwareag/IntegrationServer/instances/default/data/**;/dev/smud456/**;/dev/smud123/**"
+
+  # Directories/files with DELETE permission for pub.file services
+  # Prod environment: Most restrictive - temp only
+  allowedDeletePaths: "/tmp"
+
+# ============================================================================
+# webMethods Cloud (Integration Cloud) Configuration
+# ============================================================================
+# Enables connectivity to webMethods.io Integration / Integration Cloud
+#
+# Configuration files are loaded from:
+#   - files/integrationlive/accounts.cnf
+#   - files/integrationlive/connections.cnf
+#   - files/integrationlive/applications/*.cnf
+#
+# Password stored in Azure Key Vault: prod-wmcloud-prod-io-password
+# ============================================================================
+webMethodsCloud:
+  enabled: false
+
+  # Cloud Passwords (Azure Key Vault)
+  # Only enable passwords for accounts that are enabled in accounts.cnf
+  cloudPasswords:
+    - alias: "Prod io"
+      secretName: "wmcloud-prod-io-password"
+      envVar: "WMCLOUD_PROD_IO_PASSWORD"
+
+  # Optional: Override application files from values (normally loaded from files/)
+  applicationFiles: {}
