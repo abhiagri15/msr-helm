@@ -146,7 +146,7 @@ jdbcPool:
     # Primary pool for ISInternal, Xref, Dashboard
     - name: "IS-Pool"
       description: "MSR Internal JDBC Pool"
-      dbURL: "jdbc:wm:sqlserver://wm-sql-abi-qa.database.windows.net:1433;databaseName=isinternal"
+      dbURL: "jdbc:wm:sqlserver://wm-sql-abi-dev.database.windows.net:1433;databaseName=isinternal"
       username: "wmadmin"
       secretName: "jdbcpool-ispool-password"     # Key Vault: qa-jdbcpool-ispool-password
       passwordEnvVar: "JDBC_IS_POOL_PASSWORD"
