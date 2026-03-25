@@ -18,8 +18,8 @@ replicaCount: 3
 ## The tag below is a fallback for manual deploys only.
 image:
   repository: abiwebmethods.azurecr.io/webmethods-microservicesruntime
-  tag: "11.1.0.6-build-272"
-  pullPolicy: IfNotPresent
+  tag: "11.1.0.6"
+  pullPolicy: Always
 
 service:
   type: ClusterIP
