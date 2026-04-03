@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerAccount
+applicationDescription=functionality to be invoke when pulling data from SAP
+details=SmCustomerGrabs,smud.customer.grabs.flow:getAccountSelectionSummary,getAccountSelectionSummary,true,false;SmCustomerProfile,smud.customer.profile:getLinkAccountDetails,getLinkAccountDetails,true,false;SmCustomerProfile,smud.customer.profile:updateLinkAccountDetails,updateLinkAccountDetails,true,false;

@@ -1,0 +1,3 @@
+applicationName=SMUD_UtiliPaaSConnectivity
+applicationDescription=Utility for checking connection between iPaaS and on-prem servers
+details=SmUtiliPaaSConnectivity,smud.util.ipaasconnectivity:verifyOnPremConnection,verifyOnPremConnection,true,false;

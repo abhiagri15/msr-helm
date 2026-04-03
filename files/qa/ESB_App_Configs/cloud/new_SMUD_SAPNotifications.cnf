@@ -1,0 +1,3 @@
+applicationName=SMUD_SAPNotifications
+applicationDescription=Services exposed to allow vendors to create SAP notifications
+details=SmCloudApiSAPNotification,smud.cloudapi.sap.notification.flow:CreatePowerInverterNotification,CreatePowerInverterNotification,true,false;SmSystemSAPNotifications,smud.system.sap.notifications.flow:createNotification,createNotification,true,false;SmSystemSAPNotifications,smud.system.sap.notifications.flow:updateNotificationStatus,updateNotificationStatus,true,false;SmSystemSAPNotifications,smud.system.sap.notifications.flow:upsertRESNETNotification,upsertRESNETNotification,true,false;

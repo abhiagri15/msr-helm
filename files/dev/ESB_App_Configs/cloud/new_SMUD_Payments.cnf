@@ -1,0 +1,3 @@
+applicationName=SMUD_Payments
+applicationDescription=Payment services for real time payment processing
+details=SmPayment,smud.payment.flow:checkPaymentEligibility,checkPaymentEligibility,true,false;SmPayment,smud.payment.flow:createPaymentSubledger,createPaymentSubledger,true,false;SmPaymentArrangements,smud.payment.arrangements.eligibility.flow:getPaymentArrangementEligibility,getPaymentArrangementEligibility,true,false;

@@ -1,0 +1,3 @@
+applicationName=SMUD_PowerClerk_CEV
+applicationDescription=PowerClerk Commercial EV
+details=SmPowerClerkCommercialEV,smud.powerClerk.commercial.ev.flow:createCommercialEVNotification,createCommercialEVNotification,true,false;

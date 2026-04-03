@@ -1,0 +1,3 @@
+applicationName=SMUD_NativePayments
+applicationDescription=SMUD_NativePayments
+details=SmKubra,smud.kubra.flows:createAutoPayContactLog,createAutoPayContactLog,true,false;SmKubra,smud.kubra.flows:createDigitalWalletContactLog,createDigitalWalletContactLog,true,false;SmKubra,smud.kubra.flows:createPaymentContactLog,createPaymentContactLog,true,false;

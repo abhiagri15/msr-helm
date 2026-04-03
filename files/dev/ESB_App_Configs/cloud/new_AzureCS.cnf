@@ -1,0 +1,3 @@
+applicationName=AzureCS
+applicationDescription=Azure Communication Sevices
+details=SmAzureCommunicationServices,smud.azure.communicationservices.flow:receiveSMS,receiveSMS,true,false;

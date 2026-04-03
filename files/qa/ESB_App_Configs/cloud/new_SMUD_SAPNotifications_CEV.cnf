@@ -1,0 +1,3 @@
+applicationName=SMUD_SAPNotifications_CEV
+applicationDescription=OBSOLETE and DELETE later - Operations to create a Commercial EV notification in the ERP system
+details=SmCloudApiSAPNotification,smud.cloudapi.sap.notification.flow:CreateCommercialEVNotification,CreateCommercialEVNotification,true,false;

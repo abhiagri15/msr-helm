@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.data.ISMemDataImpl">
+    <value name="fileName">D:\ESB_App_Configs\OATI_TagDataLoad\processOATIDataJMS.xml</value>
+    <record name="JMSMessage" javaclass="com.wm.data.ISMemDataImpl">
+      <record name="properties" javaclass="com.wm.data.ISMemDataImpl">
+        <number name="JMSXDeliveryCount" type="java.lang.Integer">1</number>
+        <value name="$coderType">idata_bytes</value>
+      </record>
+      <record name="header" javaclass="com.wm.data.ISMemDataImpl">
+        <null name="JMSCorrelationID"/>
+        <number name="JMSDeliveryMode" type="java.lang.Integer">2</number>
+        <value name="JMSDestination">com.webmethods.jms.impl.WmTopicImpl[name=OATiTagData_T eventType=OATiTagData_T sharedState=true sharedStateOrdering=publisher deadLetterOnly=false localOnly=false priorityOrdering=true readOnly=false]</value>
+        <number name="JMSExpiration" type="java.lang.Long">0</number>
+        <value name="JMSMessageID">ID:f09bda15-35d1-4440-8bb6-c654b2379054-138467</value>
+        <number name="JMSPriority" type="java.lang.Integer">4</number>
+        <jboolean name="JMSRedelivered">false</jboolean>
+        <value name="JMSReplyTo">null</value>
+        <number name="JMSTimestamp" type="java.lang.Long">1428271173663</number>
+        <value name="JMSType">OATiTagData</value>
+      </record>
+      <record name="body" javaclass="com.wm.data.ISMemDataImpl">
+        <record name="data" javaclass="com.wm.data.ISMemDataImpl">
+          <value name="inputXml">&lt;?xml version="1.0"?&gt;
+&lt;Envelope&gt;
+  &lt;Header&gt;&lt;/Header&gt;
+  &lt;Body&gt;
+    &lt;DistributeStatus&gt;
+      &lt;MessageInfo&gt;
+        &lt;FromEntity&gt;
+          &lt;CACode&gt;2254&lt;/CACode&gt;
+        &lt;/FromEntity&gt;
+        &lt;SecurityKey&gt;694922142670&lt;/SecurityKey&gt;
+        &lt;ToEntity&gt;
+          &lt;PSECode&gt;809&lt;/PSECode&gt;
+        &lt;/ToEntity&gt;
+        &lt;CallTimeStamp&gt;2015-03-31T06:01:07Z&lt;/CallTimeStamp&gt;
+      &lt;/MessageInfo&gt;
+      &lt;TagID&gt;
+        &lt;GCACode&gt;104&lt;/GCACode&gt;
+        &lt;PSECode&gt;809&lt;/PSECode&gt;
+        &lt;TagCode&gt;SMQ6478&lt;/TagCode&gt;
+        &lt;LCACode&gt;2254&lt;/LCACode&gt;
+      &lt;/TagID&gt;
+      &lt;RequestRef&gt;1&lt;/RequestRef&gt;
+      &lt;StatusList&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;CACode&gt;885&lt;/CACode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;APPROVED&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;ACTIVE&lt;/ApprovalStatusType&gt;
+          &lt;ApprovalTimeStamp&gt;2015-03-31T06:01:05Z&lt;/ApprovalTimeStamp&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;CACode&gt;104&lt;/CACode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;APPROVED&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;ACTIVE&lt;/ApprovalStatusType&gt;
+          &lt;ApprovalTimeStamp&gt;2015-03-31T06:01:02Z&lt;/ApprovalTimeStamp&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;CACode&gt;2254&lt;/CACode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;APPROVED&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;ACTIVE&lt;/ApprovalStatusType&gt;
+          &lt;ApprovalTimeStamp&gt;2015-03-31T06:01:06Z&lt;/ApprovalTimeStamp&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;TPCode&gt;2026&lt;/TPCode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;APPROVED&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;ACTIVE&lt;/ApprovalStatusType&gt;
+          &lt;ApprovalTimeStamp&gt;2015-03-31T06:01:06Z&lt;/ApprovalTimeStamp&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;TPCode&gt;103&lt;/TPCode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;APPROVED&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;ACTIVE&lt;/ApprovalStatusType&gt;
+          &lt;ApprovalTimeStamp&gt;2015-03-31T06:01:02Z&lt;/ApprovalTimeStamp&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;TPCode&gt;801&lt;/TPCode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;APPROVED&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;ACTIVE&lt;/ApprovalStatusType&gt;
+          &lt;ApprovalTimeStamp&gt;2015-03-31T06:01:06Z&lt;/ApprovalTimeStamp&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;TPCode&gt;935&lt;/TPCode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;PENDING&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;NA&lt;/ApprovalStatusType&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;PSECode&gt;809&lt;/PSECode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;APPROVED&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;ACTIVE&lt;/ApprovalStatusType&gt;
+          &lt;ApprovalTimeStamp&gt;2015-03-31T06:00:53Z&lt;/ApprovalTimeStamp&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;PSECode&gt;707&lt;/PSECode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;NA&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;NA&lt;/ApprovalStatusType&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;PSECode&gt;1000071&lt;/PSECode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;NA&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;NA&lt;/ApprovalStatusType&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;PSECode&gt;1000398&lt;/PSECode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;NA&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;NA&lt;/ApprovalStatusType&gt;
+        &lt;/Status&gt;
+        &lt;Status&gt;
+          &lt;Entity&gt;
+            &lt;SCCode&gt;2075&lt;/SCCode&gt;
+          &lt;/Entity&gt;
+          &lt;DeliveryStatus&gt;DELIVERED&lt;/DeliveryStatus&gt;
+          &lt;ApprovalStatus&gt;NA&lt;/ApprovalStatus&gt;
+          &lt;ApprovalStatusType&gt;NA&lt;/ApprovalStatusType&gt;
+        &lt;/Status&gt;
+      &lt;/StatusList&gt;
+    &lt;/DistributeStatus&gt;
+  &lt;/Body&gt;
+&lt;/Envelope&gt;</value>
+          <record name="transport" javaclass="com.wm.util.Values">
+            <value name="protocol">http</value>
+            <value name="subprotocol">HTTP</value>
+            <record name="http" javaclass="com.wm.util.Values">
+              <value name="requestUrl">/invoke/SmPSGO.OATI_TagDataLoad.flow/OATiDataReceiver</value>
+              <value name="method">POST</value>
+              <record name="requestHdrs" javaclass="com.wm.util.Values">
+                <value name="Accept-Encoding">gzip,deflate</value>
+                <value name="Content-Type">text/xml;charset=UTF-8</value>
+                <value name="SOAPAction">NERCETag1.8.2:DistributeStatus</value>
+                <value name="Content-Length">5068</value>
+                <value name="Host">SNDESBIS01.corporate.smud.org</value>
+                <value name="Connection">Keep-Alive</value>
+                <value name="User-Agent">Apache-HttpClient/4.1.1 (java 1.5)</value>
+              </record>
+              <record name="ipInfo" javaclass="com.wm.util.Values">
+                <value name="localIp">10.36.2.37</value>
+                <value name="localPort">80</value>
+                <value name="remoteIp">10.220.223.16</value>
+                <value name="remotePort">22360</value>
+              </record>
+            </record>
+          </record>
+        </record>
+      </record>
+    </record>
+  </record>
+</IDataXMLCoder>

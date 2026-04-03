@@ -1,0 +1,3 @@
+applicationName=SMUD_Premise
+applicationDescription=Internal ESB Services to support public APIs for customer premise information.
+details=SmCloudApiPremise,smud.cloudapi.premise.adapter:DB_Get_PremiseDetails,DB_Get_PremiseDetails,true,false;SmCloudApiPremise,smud.cloudapi.premise.adapter:DB_Get_ZipCodes_City,DB_Get_ZipCodes_City,true,false;

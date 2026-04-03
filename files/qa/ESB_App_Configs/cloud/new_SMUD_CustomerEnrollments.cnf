@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerEnrollments
+applicationDescription=API to get enrollments
+details=SmCustomerPreference,SmCustomerPreference.flow:Customer_Pref_GetEnrollments,Customer_Pref_GetEnrollments,true,false;

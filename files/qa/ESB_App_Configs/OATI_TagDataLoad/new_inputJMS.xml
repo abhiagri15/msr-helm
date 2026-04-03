@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.util.Values">
+    <value name="fileName">D:\ESB_App_Configs\OATI_TagDataLoad\inputJMS.xml</value>
+    <record name="transport" javaclass="com.wm.util.Values">
+      <value name="protocol">http</value>
+      <value name="subprotocol">HTTP</value>
+      <record name="http" javaclass="com.wm.util.Values">
+        <value name="requestUrl">/invoke/SmPSGO.OATI_TagDataLoad.flow/OATiDataReceiver</value>
+        <value name="method">POST</value>
+        <record name="requestHdrs" javaclass="com.wm.util.Values">
+          <value name="Accept-Encoding">gzip,deflate</value>
+          <value name="Content-Type">text/xml;charset=UTF-8</value>
+          <value name="SOAPAction">NERCETag1.8.2:DistributeStatus</value>
+          <value name="Content-Length">5068</value>
+          <value name="Host">SNDESBIS01.corporate.smud.org</value>
+          <value name="Connection">Keep-Alive</value>
+          <value name="User-Agent">Apache-HttpClient/4.1.1 (java 1.5)</value>
+        </record>
+        <record name="ipInfo" javaclass="com.wm.util.Values">
+          <value name="localIp">10.36.2.37</value>
+          <value name="localPort">80</value>
+          <value name="remoteIp">10.131.88.210</value>
+          <value name="remotePort">41696</value>
+        </record>
+      </record>
+    </record>
+  </record>
+</IDataXMLCoder>

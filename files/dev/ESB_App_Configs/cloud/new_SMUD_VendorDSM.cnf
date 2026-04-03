@@ -1,0 +1,3 @@
+applicationName=SMUD_VendorDSM
+applicationDescription=SMUD DSM APIs for Vendors
+details=SmVendorDSM,smud.vendor.dsm:createCESAgreement,createCESAgreement,true,false;SmVendorDSM,smud.vendor.dsm:validateCESCustomer,validateCESCustomer,true,false;

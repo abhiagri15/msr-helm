@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerMoves
+applicationDescription=functionality for move services
+details=SmCustomerMove,smud.customer.moves.flow.utils:queueBlendedAgentEmail,queueBlendedAgentEmail,true,true;SmCustomerMove,smud.customer.moves.flow:blendedAgentEmail,blendedAgentEmail,true,true;

@@ -1,0 +1,3 @@
+applicationName=SMUD_Resistograph
+applicationDescription=Internal ESB services for uploading and accessing resistograph data
+details=SmCloudApiResistograph,smud.cloudapi.resistograph.flow:UploadRead,UploadRead,true,false;SmCloudApiResistograph,smud.cloudapi.resistograph.flow:DeleteRead,DeleteRead,true,false;SmCloudApiResistograph,smud.cloudapi.resistograph.flow:QueryReads,QueryReads,true,false;SmCloudApiResistograph,smud.cloudapi.resistograph.flow:GetRead,GetRead,true,false;

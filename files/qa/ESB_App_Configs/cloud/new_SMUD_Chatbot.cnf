@@ -1,0 +1,3 @@
+applicationName=SMUD_Chatbot
+applicationDescription=SMUD Chatbot
+details=SmChatBot,smud.chatbot.sessions.flow:getUserSession,getUserSession,true,false;SmChatBot,smud.chatbot.sessions.flow:postUserSession,postUserSession,true,false;

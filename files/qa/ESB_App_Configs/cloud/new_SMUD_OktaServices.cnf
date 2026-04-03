@@ -1,0 +1,3 @@
+applicationName=SMUD_OktaServices
+applicationDescription=services exposed to retrieve Okta user data
+details=SmCloudApiOKTA,smud.cloudapi.okta.flow:GetUserExport,GetUserExport,true,false;SmCloudApiOKTA,smud.cloudapi.okta.flow:GetUserExportControl,GetUserExportControl,true,false;

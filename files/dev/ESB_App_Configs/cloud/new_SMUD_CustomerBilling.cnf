@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerBilling
+applicationDescription=Customer Information related to billing
+details=SmKubra,smud.kubra.flows:buildBillDownloadURL,buildBillDownloadURL,true,false;SmSES_v35,SmSES_v35.customer.billing.flow:Partner_OpenText_GetInvoice,Partner_OpenText_GetInvoice,true,false;SmSES_v35,SmSES_v35.customer.billing.flow:Partner_OpenText_GetInvoicesByContractAccount,Partner_OpenText_GetInvoicesByContractAccount,true,false;

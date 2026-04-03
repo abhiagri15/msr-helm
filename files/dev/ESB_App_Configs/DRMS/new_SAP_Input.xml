@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<IDataXMLCoder version="1.0">
+  <record javaclass="com.wm.data.ISMemDataImpl">
+    <value name="fileName">D:\ESB_App_Configs\DRMS\SAP_Input.xml</value>
+    <value name="IM_FAILURE_ONLY">X</value>
+    <record name="INPUT_DEVICES" javaclass="com.wm.util.Table">
+      <array name="cols" type="value" depth="1">
+        <value>DEVLOC</value>
+        <value>DEVICEYUUID</value>
+      </array>
+      <list name="rows">
+      </list>
+      <value name="name">ZCS_DRMS_S_DEV_COMM_STATUS_INP</value>
+      <null name="sizes"/>
+    </record>
+    <record name="OUTPUT_DEVICES" javaclass="com.wm.util.Table">
+      <array name="cols" type="value" depth="1">
+        <value>DEVLOC</value>
+        <value>HAN_MAC</value>
+        <value>UUID</value>
+        <value>DEVICE_ID</value>
+        <value>STATUS</value>
+        <value>LAST_COMM_DATE</value>
+        <value>LAST_COMM_TIME</value>
+      </array>
+      <list name="rows">
+      </list>
+      <value name="name">ZCS_DRMS_S_DEV_COMM_STATUS_OUT</value>
+      <null name="sizes"/>
+    </record>
+    <value name="$rfcname">ZCS_DRMS_GET_DEVICE_STATUS</value>
+    <value name="serverName">RFCWEQ_Conn</value>
+    <value name="$call">true</value>
+    <value name="$encoding">iso-8859-1</value>
+    <value name="$action">1</value>
+  </record>
+</IDataXMLCoder>

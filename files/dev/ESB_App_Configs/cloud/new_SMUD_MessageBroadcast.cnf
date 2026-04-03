@@ -1,0 +1,3 @@
+applicationName=SMUD_MessageBroadcast
+applicationDescription=SMUD_MessageBroadcast
+details=SmVendorMessageBroadcast,smud.vendor.messagebroadcast.flow:updateSmsPreference,updateSmsPreference,true,false;

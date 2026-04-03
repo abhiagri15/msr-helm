@@ -1,0 +1,3 @@
+applicationName=SMUD_PublicEmail
+applicationDescription=Templated email services
+details=SmPublicEmail,SmPublicEmail.flow:RetrieveEmailQueue,RetrieveEmailQueue,false,false;SmPublicEmail,SmPublicEmail.flow:SendEmail,SendEmail,false,false;SmPublicEmail,SmPublicEmail.flow:SendEmailByTemplate,SendEmailByTemplate,false,false;SmPublicEmail,SmPublicEmail.flow:processEmailQueue,processEmailQueue,false,false;SmPublicEmail,smud.email.flow:sendEmailByTemplate,sendEmailByTemplate,true,false;

@@ -1,0 +1,3 @@
+applicationName=SMUD_SailPoint
+applicationDescription=services to connect to SailPoint identity management system
+details=SmSystemSailPoint,smud.system.sailpoint:getEmployeeData,getEmployeeData,true,false;

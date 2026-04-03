@@ -1,0 +1,3 @@
+applicationName=SMUD_Logs
+applicationDescription=Services exposed for reading and writing to SMUD's logging db
+details=SmUtilLogs,smud.util.logs:createEvent,createEvent,true,false;SmUtilLogs,smud.util.logs:createSession,createSession,true,false;SmUtilLogs,smud.util.logs:getApplicationNames,getApplicationNames,true,false;SmUtilLogs,smud.util.logs:getEntries,getEntries,true,false;SmUtilLogs,smud.util.logs:getEvents,getEvents,true,false;SmUtilLogs,smud.util.logs:getExceptions,getExceptions,true,false;SmUtilLogs,smud.util.logs:getSessions,getSessions,true,false;SmUtilLogs,smud.util.logs:logEntry,logEntry,true,false;SmUtilLogs,smud.util.logs:updateSession,updateSession,true,false;

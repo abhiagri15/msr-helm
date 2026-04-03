@@ -1,0 +1,3 @@
+applicationName=SMUD_GenesysServices
+applicationDescription=Services for Genesys to use
+details=Default,AMTest:testCloudFlow,testCloudFlow,true,false;SmIVR,SmIVR.AccountServices.flow.main:getCustomerProfile,getCustomerProfile,true,false;

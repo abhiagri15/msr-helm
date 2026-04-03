@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerProfile
+applicationDescription=Cloud connector to manage customer profiles
+details=SmCustomerProfile,SmCustomerProfile.profile.flow:Customer_Profile_Delete,Customer_Profile_Delete,true,true;SmCustomerProfile,smud.customer.profile:deleteProfile,deleteProfile,true,true;SmCustomerProfile,smud.customer.profile:registerCustomer,registerCustomer,true,false;

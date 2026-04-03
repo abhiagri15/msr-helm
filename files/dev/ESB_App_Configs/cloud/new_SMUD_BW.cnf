@@ -1,0 +1,3 @@
+applicationName=SMUD_BW
+applicationDescription=Services connected directly to BW data source
+details=SmBW,smud.bw.wbs.flow:getMasterData,getMasterData,true,false;SmBW,smud.bw.wbs.flow:getTransactionalData,getTransactionalData,true,false;

@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerPreferences
+applicationDescription=API to get and create notification preferences
+details=SmCustomerPreference,smud.customer.preference:deletePreference,deletePreference,true,false;SmCustomerPreference,smud.customer.preference:getPreferencesByBP,getPreferencesByBP,true,false;SmCustomerPreference,smud.customer.preference:manageOutageSearchOptOut,manageOutageSearchOptOut,true,false;SmCustomerPreference,smud.customer.preference:upsertPreference,upsertPreference,true,false;

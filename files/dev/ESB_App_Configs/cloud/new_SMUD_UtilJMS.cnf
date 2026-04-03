@@ -1,0 +1,3 @@
+applicationName=SMUD_UtilJMS
+applicationDescription=Utility service for sending and receiving JMS messages
+details=SmUtilJMS,smud.util.jms:publish,publish,true,false;SmUtilJMS,smud.util.jms:publishAndWait,publishAndWait,true,false;

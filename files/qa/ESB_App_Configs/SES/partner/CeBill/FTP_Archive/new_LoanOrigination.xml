@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<NLS CommitBlock="1" EnforceTagExistence="1">
+  <CIF TaxIDNumber="555442233" FullName1="VIVIAN P ESPINOSA" ShortName="ESPINOSA VIVIAN" UpdateFlag="0" CIFPortfolioName="BORROWER" CIFNumber="5123107" Entity="Individual" StreetAddress1="6439 DORINDA WAY" City="CARMICHAEL" State="CA" ZipCode="95608">
+    <CIFADDRESSBOOK CompanyName="SMUD" AddressDescription="Employer address" RelationshipCode="EMPLOYER" Entity="ORGANIZATION" Title1="FINANCING SPECIALIST"/>
+    <CIFPHONENUMBER PhoneNumber="916-977-7777" PhoneDescription="Home"/>
+    <CIFPHONENUMBER PhoneNumber="916-732-5420" PhoneDescription="Work"/>
+    <CIFTOCIFRELATIONSHIP RelatedCIFNumber="1120967" RelationshipCode="INSTALLATION ADDRESS BP"/>
+  </CIF>
+  <COLLATERAL CollateralCode="SECURED EQUIP" CollateralDetail1="AC PKG" CollateralDetail2="FIXTURES" CollateralDetail5="15500.00" CollateralDetail6="15000.00" CollateralDetail7="500.00" CollateralDetail8="1" CollateralDetail9="00/00/0000" CollateralDetail18="" CollateralDetail19="" StoreRecordID="1001"/>
+  <TASK UpdateFlag="0" TaskTemplateName="RES LOAN ORIGINATION" Subject="9005123107 - VIVIAN P ESPINOSA">
+    <RELATIONSHIPSCODES ChildRefNumber="5123107" TMRCode="Borrower">
+      <RELATIONSHIPSCODES ChildRefNumber="1120967" RelationshipCode="Employer" TMRCode="Employer"/>
+      <RELATIONSHIPSCODES RelationshipCode="INSTALLATION ADDRESS BP" TMRCode="INSTALLATION ADDRESS BP" ChildRefNumber="1120967"/>
+    </RELATIONSHIPSCODES>
+    <RELATIONSHIPSCODES GetRecordID="1001" TMRCode="SECURED MEASURE"/>
+    <RELATIONSHIPSCODES LD_LoanTermChar="P" LD_SalesPrice="15600" LD_LoanNumber="9005123107" LD_DPOther="100.00" LD_DPRebate="500" LD_InterestRate="6.99000" LD_LoanDetailTemplate="Residential Secured" LD_DPCash="0.00" LD_AmountFinanced="15000" TMRCode="Loan Details" LD_LoanTerm="120" LD_ApplicationDate="11/01/2012">
+      <UDF UserDefined35="15400.00" UserDefined18="DEDUCT FROM VENDOR PAYMENT" UserDefined1="HVAC-Finance" UserDefined2="08:00:00"/>
+    </RELATIONSHIPSCODES>
+  </TASK>
+</NLS>

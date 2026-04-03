@@ -1,0 +1,3 @@
+applicationName=SMUD_OutageMapService
+applicationDescription=Outage map service
+details=SmOutageMapService,smud.system.oms.flows:communityResponse,communityResponse,true,false;SmOutageMapService,smud.system.oms.flows:outageResponse,outageResponse,true,false;

@@ -1,0 +1,3 @@
+applicationName=SMUD_EAPREnroll
+applicationDescription=Application for EAPR enroll
+details=SmCustomerProgram,api.v1.customer.program.eapr:_post,_post,false,false;SmCustomerProgram,smud.customer.program.eapr:enrollEAPR,enrollEAPR,true,true;

@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerOutage
+applicationDescription=Services to allow getting and creating outage reports
+details=SmSystemOMS,SmSystemOMS.flow:getOutageInfo,getOutageInfo,true,false;SmSystemOMS,smud.system.oms.flows:getAuthInfoByPhoneNumber,getAuthInfoByPhoneNumber,true,false;

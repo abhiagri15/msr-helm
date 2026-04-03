@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerUsage
+applicationDescription=functionality for program
+details=SmSES_v35,SmSES_v35.partner.CPR.flow:Partner_CPR_GetUID,Partner_CPR_GetUID,true,false;

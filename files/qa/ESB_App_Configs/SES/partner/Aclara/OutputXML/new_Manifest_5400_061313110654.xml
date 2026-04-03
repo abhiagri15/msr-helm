@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<DataIntegrationManifest>
+  <Import>
+    <TransactionId>1266710057155308</TransactionId>
+    <SubscriptionFiles>
+      <SubscriptionFile>subimport_5400_1266710057155308_061313110654.xml</SubscriptionFile>
+    </SubscriptionFiles>
+    <AMIFiles>
+      <AMIFile Interval="15Minute">ami_5400_15_1266710057155308_061313110654.csv</AMIFile>
+      <AMIFile Interval="60Minute">ami_5400_60_1266710057155308_061313110654.csv</AMIFile>
+    </AMIFiles>
+    <AccountFiles>
+      <AccountFile>billhistory_5400_1266710057155308_061313110654.xml</AccountFile>
+    </AccountFiles>
+  </Import>
+</DataIntegrationManifest>

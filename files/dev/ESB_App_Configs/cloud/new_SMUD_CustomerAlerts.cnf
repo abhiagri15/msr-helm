@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerAlerts
+applicationDescription=Services to opt in/out of SMS alerts
+details=SmSystemSAP,smud.system.sap.customer.alerts:updateSmsPreference,updateSmsPreference,true,false;

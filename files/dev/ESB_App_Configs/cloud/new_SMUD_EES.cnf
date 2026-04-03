@@ -1,0 +1,3 @@
+applicationName=SMUD_EES
+applicationDescription=Express Energy Solutions API
+details=SmCloudApiEES,smud.cloudapi.EES.flow:createTransaction,createTransaction,true,false;SmCloudApiEES,smud.cloudapi.EES.flow:getTransactionStatus,getTransactionStatus,true,false;

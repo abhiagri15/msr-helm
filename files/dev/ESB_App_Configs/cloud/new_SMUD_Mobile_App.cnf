@@ -1,0 +1,3 @@
+applicationName=SMUD_Mobile_App
+applicationDescription=Package of services to support SMUD's mobile app
+details=SmSSO,SmSSO.flow:readJWT,readJWT,true,false;SmMobile,SmMobile.security.flow:Mobile_AccountSummary_get,Mobile_AccountSummary_get,true,false;

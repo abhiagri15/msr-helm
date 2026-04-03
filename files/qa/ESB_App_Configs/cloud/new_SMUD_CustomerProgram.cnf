@@ -1,0 +1,3 @@
+applicationName=SMUD_CustomerProgram
+applicationDescription=functionality for program
+details=SmCustomerProgram,smud.customer.program.flow:queueProgramEmail,queueProgramEmail,true,false;

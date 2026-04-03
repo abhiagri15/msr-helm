@@ -1,0 +1,3 @@
+applicationName=SMUD_Security
+applicationDescription=SMUD security services
+details=SmUtilSecurity,smud.util.security.token:getSessionToken,getSessionToken,true,false;SmUtilSecurity,smud.util.security:signJWT,signJWT,true,false;

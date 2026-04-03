@@ -1,0 +1,3 @@
+applicationName=SMUD_SMS
+applicationDescription=SMUD_SMS
+details=SmSMS,smud.sms.flows:createIncident,createIncident,true,false;

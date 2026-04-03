@@ -1,0 +1,3 @@
+applicationName=SMUD_OCM
+applicationDescription=SMUD OCM Storm Events
+details=SmSystemOCM,smud.system.ocm.flow:getOpenStormEvent,getOpenStormEvent,true,false;
