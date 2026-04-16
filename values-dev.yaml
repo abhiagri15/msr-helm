@@ -431,16 +431,16 @@ autoscaling:
 #      --certificate-permissions get list
 #
 # For this cluster:
-#   Kubelet Identity Client ID: d29b9005-61cb-4bee-a65e-93ce467607d7
-#   Kubelet Identity Object ID: e6821e4e-6cb3-473f-bb85-e08a04b7c4a1
-#   CSI Driver Identity Client ID: 8a9ec9ad-6044-4bd9-ba7f-7c5fff7bc39a
-#   CSI Driver Identity Object ID: 71448eba-1d15-4f3f-a0ae-66cb33b54272 (use this for Key Vault policy)
+#   Kubelet Identity Client ID: a12efa48-85bd-4a27-a014-80a00d61286c
+#   Kubelet Identity Object ID: ed57e82e-0aa1-4a5f-97cc-3716b101f4c6
+#   CSI Driver Identity Client ID: d3e501cd-5014-4388-9822-1403900b4fd9
+#   CSI Driver Identity Object ID: a9267ab1-71a5-4e57-99ba-6fe25470e90d (use this for Key Vault policy)
 # ============================================================================
 azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "8a9ec9ad-6044-4bd9-ba7f-7c5fff7bc39a"  # CSI Secrets Store addon identity (more reliable on autoscaled nodes)
+  clientId: "d3e501cd-5014-4388-9822-1403900b4fd9"  # CSI Secrets Store addon identity (more reliable on autoscaled nodes)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault
