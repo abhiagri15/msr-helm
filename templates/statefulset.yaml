@@ -22,6 +22,13 @@ spec:
       {{- include "webmethods-msr.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        # Covers all values file changes: adapters, JMS, and any -f flag passed to helm upgrade
+        checksum/values: {{ toJson .Values | sha256sum }}
+        # Covers ConfigMap template file changes (files/ directory content baked in at render time)
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/package-configs: {{ include (print $.Template.BasePath "/package-configs.yaml") . | sha256sum }}
+        checksum/cloud-config: {{ include (print $.Template.BasePath "/webmethods-cloud-configmap.yaml") . | sha256sum }}
       labels:
         {{- include "webmethods-msr.selectorLabels" . | nindent 8 }}
         component: microservicesruntime
@@ -83,10 +90,43 @@ spec:
             add:
               - CHOWN       # Required for chown on keystore files
               - DAC_OVERRIDE # Required for writing to PVC before ownership is set
+        # Pull keystore/truststore passwords from Azure Key Vault (via SecretProviderClass)
+        # rather than baking them into the rendered manifest. Exposes:
+        #   KEYSTORE_PASSWORD, KEYALIAS_PASSWORD, TRUSTSTORE_PASSWORD
+        envFrom:
+        - secretRef:
+            name: {{ include "webmethods-msr.fullname" . }}-security-secrets
         command: ['bash', '-c']
         args:
         - |
           echo "Converting and copying keystores from Azure Key Vault to MSR security directory..."
+
+          # ========================================================================
+          # Step 0: Verify required passwords are present from Azure Key Vault
+          # ========================================================================
+          # Passwords MUST come from Azure Key Vault via the security-secrets Secret.
+          # There are NO hardcoded defaults - fail fast with a clear message instead.
+          {{- if .Values.azureKeyVault.certificates }}
+          if [ -z "${KEYSTORE_PASSWORD:-}" ]; then
+            echo "ERROR: KEYSTORE_PASSWORD is not set." >&2
+            echo "       Expected secret '{{ .Values.azureKeyVault.secretKeyPrefix | default "dev" }}-keystore-password' in Azure Key Vault '{{ .Values.azureKeyVault.vaultName }}'." >&2
+            echo "       Verify the SecretProviderClass synced '{{ include "webmethods-msr.fullname" . }}-security-secrets'." >&2
+            exit 1
+          fi
+          if [ -z "${KEYALIAS_PASSWORD:-}" ]; then
+            echo "ERROR: KEYALIAS_PASSWORD is not set." >&2
+            echo "       Expected secret '{{ .Values.azureKeyVault.secretKeyPrefix | default "dev" }}-keyalias-password' in Azure Key Vault '{{ .Values.azureKeyVault.vaultName }}'." >&2
+            exit 1
+          fi
+          {{- end }}
+          {{- if .Values.truststoreCertificates.enabled }}
+          if [ -z "${TRUSTSTORE_PASSWORD:-}" ]; then
+            echo "ERROR: TRUSTSTORE_PASSWORD is not set." >&2
+            echo "       Expected secret '{{ .Values.azureKeyVault.secretKeyPrefix | default "dev" }}-truststore-password' in Azure Key Vault '{{ .Values.azureKeyVault.vaultName }}'." >&2
+            exit 1
+          fi
+          {{- end }}
+          echo "All required Key Vault passwords are present."
 
           # ========================================================================
           # Step 1: Install Azure CLI and OpenSSL
@@ -120,6 +160,14 @@ spec:
           # The CSI driver handles authentication using the Azure Key Vault Secrets Provider identity
           # NOTE: Azure Key Vault CSI driver mounts certificates as PEM format, not PKCS12
           {{- range .Values.azureKeyVault.certificates }}
+          {{- /* Validate required keystoreConfig values - no silent defaults */}}
+          {{- if not .keystoreConfig }}
+          {{- fail (printf "azureKeyVault.certificates[%s].keystoreConfig is required" .certName) }}
+          {{- end }}
+          {{- if not .keystoreConfig.keys }}
+          {{- fail (printf "azureKeyVault.certificates[%s].keystoreConfig.keys is required (the 'wm_cer' default has been removed for security)" .certName) }}
+          {{- end }}
+          {{- $aliasName := required (printf "azureKeyVault.certificates[%s].keystoreConfig.keys[0].keyAliasName is required (the 'wm_cer' default has been removed for security)" .certName) (index .keystoreConfig.keys 0).keyAliasName }}
           echo "Processing certificate {{ .certName }} from CSI mounted secrets..."
 
           # Check if certificate file exists in CSI mount
@@ -131,11 +179,12 @@ spec:
               echo "Certificate is in PEM format, converting to PKCS12..."
 
               # Extract private key and certificate from PEM
+              # Password is sourced from $KEYSTORE_PASSWORD (Azure Key Vault), NOT from values
               openssl pkcs12 -export \
                 -in "/mnt/secrets-store/{{ .fileName }}" \
                 -out "/opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .fileName }}" \
-                -password pass:{{ .keystoreConfig.password | default "changeit" }} \
-                -name "{{ if .keystoreConfig.keys }}{{ (index .keystoreConfig.keys 0).keyAliasName }}{{ else }}wm_cer{{ end }}" \
+                -password "pass:${KEYSTORE_PASSWORD}" \
+                -name "{{ $aliasName }}" \
                 2>&1 || echo "WARNING: OpenSSL conversion failed"
 
               echo "Converted PEM to PKCS12 format"
@@ -147,11 +196,11 @@ spec:
             chmod 644 /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .fileName }}
             echo "Successfully created keystore {{ .fileName }}"
 
-            # Verify the PKCS12 keystore with keytool
+            # Verify the PKCS12 keystore with keytool (password from $KEYSTORE_PASSWORD)
             echo "Verifying Java keystore compatibility:"
             keytool -list -v \
               -keystore /opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .fileName }} \
-              -storepass {{ .keystoreConfig.password | default "changeit" }} \
+              -storepass "${KEYSTORE_PASSWORD}" \
               -storetype PKCS12 2>&1 | head -30 || echo "Keystore verification failed - check password or format"
           else
             echo "WARNING: Certificate file {{ .fileName }} not found in CSI mount at /mnt/secrets-store/"
@@ -179,8 +228,9 @@ spec:
           echo "Creating truststore from Azure Key Vault certificates using keytool..."
 
           # Truststore path and password
+          # Password is sourced from $TRUSTSTORE_PASSWORD (Azure Key Vault), NOT from values
           TRUSTSTORE_PATH="/opt/softwareag/IntegrationServer/instances/default/config/kv-keystores/{{ .Values.truststoreCertificates.fileName }}"
-          TRUSTSTORE_PASS="{{ .Values.truststoreCertificates.password }}"
+          TRUSTSTORE_PASS="${TRUSTSTORE_PASSWORD}"
 
           # Delete truststore if it exists
           rm -f "$TRUSTSTORE_PATH"

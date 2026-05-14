@@ -506,7 +506,9 @@ truststoreCertificates:
   description: "webMethods Truststore from Azure Key Vault"
   type: "PKCS12"
   provider: "SunJSSE"
-  password: "changeit"
+  # Password is sourced from Azure Key Vault: {secretKeyPrefix}-truststore-password
+  # Injected into the init container as $TRUSTSTORE_PASSWORD via SecretProviderClass.
+  # Do NOT set a password here - it would be baked into the rendered manifest.
   certificates: []
     # Example certificates to import:
     # - certName: "truststore-root-ca"
