@@ -431,16 +431,16 @@ autoscaling:
 #      --certificate-permissions get list
 #
 # For this cluster:
-#   Kubelet Identity Client ID: aa97a442-28f5-46a5-9015-b57b836c1944
-#   Kubelet Identity Object ID: bb623ef9-fbf3-4a9c-a6e8-1430a009936d
-#   CSI Driver Identity Client ID: 4017352e-a12f-4804-aaeb-3011710d1c8d
-#   CSI Driver Identity Object ID: 6968a7b7-a74b-46c7-901f-fc04c12b6557 (use this for Key Vault policy)
+#   Kubelet Identity Client ID: 0ca9e8a9-2985-4c6f-ab25-c35b33769f10
+#   Kubelet Identity Object ID: 2716e77c-3de8-468e-96de-eb59c63a4e1d
+#   CSI Driver Identity Client ID: 92335cca-ec9d-484b-8a5f-35e3f4a57977
+#   CSI Driver Identity Object ID: 32d8264f-16cc-4bff-904f-980054d0f2be (use this for Key Vault policy)
 # ============================================================================
 azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "4017352e-a12f-4804-aaeb-3011710d1c8d"  # CSI Secrets Store addon identity (more reliable on autoscaled nodes)
+  clientId: "92335cca-ec9d-484b-8a5f-35e3f4a57977"  # CSI Secrets Store addon identity (more reliable on autoscaled nodes)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault
@@ -543,6 +543,16 @@ esbAppConfigs:
 # Mounted to /opt/softwareag/IntegrationServer/config/globalVariables.cnf
 # ============================================================================
 globalVariables:
+  enabled: true
+
+# ============================================================================
+# IBM Metering Configuration (meteringConfiguration.xml)
+# ============================================================================
+# Client-specific metering mapping from the IBM Metering Portal.
+# Loaded from files/dev/metering/meteringConfiguration.xml
+# Mounted to /opt/softwareag/common/metering/conf/meteringConfiguration.xml
+# ============================================================================
+metering:
   enabled: true
 
 # ============================================================================
