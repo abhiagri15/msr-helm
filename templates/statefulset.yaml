@@ -367,6 +367,13 @@ spec:
           value: {{ .Values.jvm.minMemory | quote }}
         - name: JAVA_MAX_MEM
           value: {{ .Values.jvm.maxMemory | quote }}
+        {{- /* Container timezone. Sets the glibc TZ so the OS clock (date), the JVM
+               default zone, and log4j timestamps all agree. -Duser.timezone alone
+               does NOT fix the OS clock or log timestamps reliably in a container. */}}
+        {{- if .Values.timezone }}
+        - name: TZ
+          value: {{ .Values.timezone | quote }}
+        {{- end }}
         - name: SAG_IS_CONFIG_PROPERTIES
           value: "/opt/softwareag/IntegrationServer/application.properties"
         # SAP SNC (Secure Network Communication) environment variables
@@ -650,11 +657,17 @@ spec:
           readOnly: true
         {{- end }}
         {{- end }}
-        {{- /* Custom Wrapper Configuration (custom_wrapper.conf) - direct read-only mount */}}
+        {{- /* Custom Wrapper Configuration - the .conf plus the translator that gives it effect.
+               MSR launches java directly (no Tanuki wrapper); server.sh sources bin/custom_setenv.sh,
+               which converts wrapper.java.additional.* lines into JAVA_CUSTOM_OPTS. */}}
         {{- if .Values.customWrapper.enabled }}
         - name: custom-wrapper
-          mountPath: /opt/softwareag/IntegrationServer/instances/default/configuration/custom_wrapper.conf
+          mountPath: /opt/softwareag/IntegrationServer/configuration/custom_wrapper.conf
           subPath: custom_wrapper.conf
+          readOnly: true
+        - name: custom-wrapper
+          mountPath: /opt/softwareag/IntegrationServer/bin/custom_setenv.sh
+          subPath: custom_setenv.sh
           readOnly: true
         {{- end }}
         {{- /* Global Variables - mounted directly to IS config */}}
@@ -875,7 +888,7 @@ spec:
           name: {{ include "webmethods-msr.fullname" . }}-endpoint-configs
       {{- end }}
       {{- end }}
-      {{- /* Custom Wrapper Configuration volume */}}
+      {{- /* Custom Wrapper Configuration volume (custom_wrapper.conf + custom_setenv.sh translator) */}}
       {{- if .Values.customWrapper.enabled }}
       - name: custom-wrapper
         configMap:
@@ -883,6 +896,9 @@ spec:
           items:
           - key: custom_wrapper.conf
             path: custom_wrapper.conf
+          - key: custom_setenv.sh
+            path: custom_setenv.sh
+            mode: 0755
       {{- end }}
       {{- /* webMethods Cloud configuration volumes */}}
       {{- if .Values.webMethodsCloud.enabled }}

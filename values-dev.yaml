@@ -303,6 +303,14 @@ customWrapper:
   enabled: true
 
 # ============================================================================
+# Container Timezone (TZ env var)
+# ============================================================================
+# Sets OS clock, JVM default zone, and log4j timestamps to Pacific.
+# Fixes the IS-logs-in-UTC issue that -Duser.timezone could not.
+# ============================================================================
+timezone: "America/Los_Angeles"
+
+# ============================================================================
 # Web Services Endpoint Configuration
 # ============================================================================
 # Endpoint .cnf files auto-discovered from files/dev/config/endpoints/*.cnf

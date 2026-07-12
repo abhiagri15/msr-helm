@@ -697,9 +697,14 @@ data:
 # ============================================================================
 # Custom Wrapper Configuration ConfigMap
 # ============================================================================
-# JVM wrapper configuration loaded from files/{environment}/configuration/
-# Mounted directly to /opt/softwareag/IntegrationServer/instances/default/configuration/custom_wrapper.conf
-# Read-only mount is safe because wrapper reads this file once at JVM startup
+# Holds two files, both mounted into the MSR container:
+#   custom_wrapper.conf -> /opt/softwareag/IntegrationServer/configuration/custom_wrapper.conf
+#                          (the env-specific JVM directives, edited by the team)
+#   custom_setenv.sh    -> /opt/softwareag/IntegrationServer/bin/custom_setenv.sh
+#                          (chart translator, sourced by server.sh at startup)
+# The container launches java directly (no Tanuki wrapper), so custom_setenv.sh
+# converts every wrapper.java.additional.* line into JAVA_CUSTOM_OPTS. Without it
+# the .conf is inert. custom_setenv.sh is env-independent (files/scripts/).
 # ============================================================================
 apiVersion: v1
 kind: ConfigMap
@@ -711,6 +716,8 @@ metadata:
 data:
   custom_wrapper.conf: |
 {{ .Files.Get (printf "files/%s/configuration/custom_wrapper.conf" .Values.environment) | indent 4 }}
+  custom_setenv.sh: |
+{{ .Files.Get "files/scripts/custom_setenv.sh" | indent 4 }}
 {{- end }}
 ---
 {{- if and .Values.endpointConfigs.enabled .Values.environment }}

@@ -325,29 +325,49 @@ extendedSettings:
 ## ============================================================================
 ## Custom Wrapper Configuration (custom_wrapper.conf)
 ## ============================================================================
-## JVM wrapper configuration for the Tanuki Java Service Wrapper.
-## Environment-specific custom_wrapper.conf loaded from:
+## Environment-specific JVM directives loaded from:
 ##   files/{environment}/configuration/custom_wrapper.conf
 ##
-## This file controls JVM options, memory settings, library paths, and
-## other wrapper-level configuration. It is read at JVM startup time
-## BEFORE the Integration Server starts.
+## HOW IT TAKES EFFECT (important):
+##   The MSR container starts the JVM directly via server.sh — it does NOT run
+##   the Tanuki Java Service Wrapper, so wrapper.java.additional.* lines are not
+##   parsed on their own. The chart mounts a translator at bin/custom_setenv.sh
+##   (from files/scripts/custom_setenv.sh) that server.sh sources at startup; it
+##   converts every wrapper.java.additional.<N>=<flag> line into JAVA_CUSTOM_OPTS.
 ##
-## Common use cases:
-##   - Additional JVM system properties (wrapper.java.additional.4xx)
-##   - Java library paths (wrapper.java.library.path.*)
-##   - Wrapper timeouts and restart behavior
-##   - JMX configuration
+## TO ADD A JVM PROPERTY IN THE FUTURE:
+##   Add a line to files/<env>/configuration/custom_wrapper.conf, e.g.
+##       wrapper.java.additional.407=-Dmy.prop=value
+##       wrapper.java.additional.408=-XX:+SomeFlag
+##   then redeploy. No template/script/code changes needed.
+##   Only wrapper.java.additional.* (JVM -D/-XX flags) are translated; native
+##   wrapper directives (library.path/ping/on_exit) are ignored.
 ##
 ## IMPORTANT: Memory settings (wrapper.java.initmemory, wrapper.java.maxmemory)
 ## are already managed by the chart via jvm.minMemory and jvm.maxMemory.
 ## Do NOT set them again in custom_wrapper.conf to avoid conflicts.
 ##
-## File location in container:
-##   /opt/softwareag/IntegrationServer/instances/default/configuration/custom_wrapper.conf
+## Container file locations:
+##   /opt/softwareag/IntegrationServer/configuration/custom_wrapper.conf
+##   /opt/softwareag/IntegrationServer/bin/custom_setenv.sh (chart translator)
 ## ============================================================================
 customWrapper:
   enabled: false
+
+## ============================================================================
+## Container Timezone
+## ============================================================================
+## Sets the TZ environment variable on the MSR container. The JVM resolves TZ
+## via its own bundled timezone database, so the JVM default zone and IS/log4j
+## log timestamps follow it (verified live: JVM reports America/Los_Angeles/PDT).
+## KNOWN LIMITATION: the MSR image ships no OS tzdata (/usr/share/zoneinfo), so
+## the shell `date` command still prints UTC. Cosmetic only — logs are correct.
+## NOTE: -Duser.timezone in custom_wrapper.conf is NOT reliable for this — use
+## this value instead.
+## Leave empty ("") to inherit the node/image default (UTC).
+## Examples: "America/Los_Angeles", "America/Chicago", "UTC"
+## ============================================================================
+timezone: ""
 
 ## ============================================================================
 ## Web Services Endpoint Configuration
