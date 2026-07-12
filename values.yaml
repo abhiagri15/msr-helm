@@ -560,6 +560,20 @@ globalVariables:
   enabled: false  # Set to true to mount globalVariables.cnf
 
 ## ============================================================================
+## IBM Metering Configuration (meteringConfiguration.xml)
+## ============================================================================
+## Client-specific metering mapping downloaded from the IBM Metering Portal
+## (mapped to Site Number + Customer Name). Loaded from:
+##   files/{environment}/metering/meteringConfiguration.xml
+## Mounted read-only to:
+##   /opt/softwareag/common/metering/conf/meteringConfiguration.xml
+## NOTE: This is the customer/site mapping, NOT metering.agent.properties
+## (the agent transport config, which ships with the image).
+## ============================================================================
+metering:
+  enabled: false  # Set to true after placing meteringConfiguration.xml
+
+## ============================================================================
 ## File Access Control Configuration (WmPublic package - pub.file services)
 ## ============================================================================
 ## Controls which directories/files the Integration Server pub.file services can access

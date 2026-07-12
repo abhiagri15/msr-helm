@@ -664,6 +664,13 @@ spec:
           subPath: globalVariables.cnf
           readOnly: true
         {{- end }}
+        {{- /* IBM Metering Configuration (customer/site mapping) */}}
+        {{- if .Values.metering.enabled }}
+        - name: metering-config
+          mountPath: /opt/softwareag/common/metering/conf/meteringConfiguration.xml
+          subPath: meteringConfiguration.xml
+          readOnly: true
+        {{- end }}
         {{- /* File Access Control configuration for WmPublic package */}}
         {{- if .Values.fileAccessControl.enabled }}
         - name: file-access-control
@@ -799,6 +806,15 @@ spec:
       - name: global-variables
         configMap:
           name: {{ include "webmethods-msr.fullname" . }}-global-variables
+      {{- end }}
+      {{- /* IBM Metering Configuration volume */}}
+      {{- if .Values.metering.enabled }}
+      - name: metering-config
+        configMap:
+          name: {{ include "webmethods-msr.fullname" . }}-metering
+          items:
+          - key: meteringConfiguration.xml
+            path: meteringConfiguration.xml
       {{- end }}
       {{- /* File Access Control configuration volume */}}
       {{- if .Values.fileAccessControl.enabled }}

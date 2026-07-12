@@ -5,3 +5,7 @@ secrets.yaml
 
 # Claude Code
 .claude/
+
+# IBM/SoftwareAG metering config contains a customer LicenseKey + CustomerID.
+# Never commit: this repo is public. Supply at deploy time (Key Vault / sealed secret).
+files/*/metering/meteringConfiguration.xml

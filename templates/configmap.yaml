@@ -737,3 +737,23 @@ data:
   {{- end }}
 {{- end }}
 {{- end }}
+---
+{{- if and .Values.metering.enabled .Values.environment }}
+# ============================================================================
+# IBM Metering Configuration ConfigMap
+# ============================================================================
+# Client-specific meteringConfiguration.xml (Site Number + Customer Name mapping)
+# loaded from files/{environment}/metering/meteringConfiguration.xml
+# Mounted read-only at /opt/softwareag/common/metering/conf/meteringConfiguration.xml
+# ============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "webmethods-msr.fullname" . }}-metering
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "webmethods-msr.labels" . | nindent 4 }}
+data:
+  meteringConfiguration.xml: |
+{{ .Files.Get (printf "files/%s/metering/meteringConfiguration.xml" .Values.environment) | indent 4 }}
+{{- end }}
