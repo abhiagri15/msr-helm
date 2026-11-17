@@ -33,7 +33,7 @@ jdbcAdapter:
       driverAlias: "Microsoft SQL Server Driver"
       dataSourceClass: "com.microsoft.sqlserver.jdbc.SQLServerDataSource"
       # Connection details (in values file - not sensitive)
-      serverName: "wm-sql-abi-dev.database.windows.net"
+      serverName: "wm-sql-abi-dev-centralus.database.windows.net"
       databaseName: "isinternal"
       portNumber: 1433
       networkProtocol: "tcp"
