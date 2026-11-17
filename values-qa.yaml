@@ -423,7 +423,7 @@ azureKeyVault:
   enabled: true
   vaultName: "wM-kv"
   tenantId: "6824e2ad-c1e1-4119-912d-c1f42857e416"
-  clientId: "f4d33191-ee7e-4f36-b246-34179d731010"  # CSI Secrets Store addon identity (more reliable on autoscaled nodes)
+  clientId: "50f56d9a-8705-47c0-b290-48e6d9e32d75"  # CSI Secrets Store addon identity (more reliable on autoscaled nodes)
   mountPath: "/mnt/secrets-store"
 
   # Environment-specific prefix for secret names in Azure Key Vault
